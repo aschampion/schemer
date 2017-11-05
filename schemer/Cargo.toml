@@ -1,0 +1,16 @@
+[package]
+name = "schemer"
+version = "0.1.0"
+authors = ["Andrew Champion <andrew.champion@gmail.com>"]
+description = "A database schema migration library with DAG dependencies"
+readme = "../README.md"
+keywords = ["database", "migration", "sql"]
+categories = ["database"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/aschampion/schemer"
+
+[badges]
+travis-ci = { repository = "aschampion/schemer", branch = "master" }
+
+[dependencies]
+uuid = { version = "0.4", features = ["use_std"] }

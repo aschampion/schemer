@@ -1,0 +1,18 @@
+[package]
+name = "schemer-postgres"
+version = "0.1.0"
+authors = ["Andrew Champion <andrew.champion@gmail.com>"]
+description = "PostgreSQL adapter for the Schemer database schema migration library"
+readme = "../README.md"
+keywords = ["database", "migration", "postgresql", "sql"]
+categories = ["database"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/aschampion/schemer"
+
+[badges]
+travis-ci = { repository = "aschampion/schemer", branch = "master" }
+
+[dependencies]
+postgres = { version = "0.15", features = ["with-uuid"] }
+
+schemer = { version = "0.1.0", path = "../schemer" }
