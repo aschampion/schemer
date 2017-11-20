@@ -3,6 +3,7 @@ extern crate uuid;
 
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fmt::Debug;
 
 use daggy::Dag;
 use daggy::petgraph::EdgeDirection;
@@ -21,11 +22,9 @@ pub trait Migration {
 pub trait Adapter {
     type MigrationType: Migration + ?Sized;
 
-    type Error; // TODO: How does this work with error_chain?
+    type Error: Debug; // TODO: How does this work with error_chain?
 
     fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error>;
-
-    // fn applied_migration_sinks(&self) -> Result<HashSet<Uuid>, Self::Error>;
 
     fn apply_migration(&mut self, &Self::MigrationType) -> Result<(), Self::Error>;
 
@@ -121,25 +120,25 @@ impl<T: Adapter> Migrator<T> {
     }
 }
 
-#[cfg(test)]
-mod tests {
+// #[cfg(test)]
+pub mod tests {
     use super::*;
 
-    struct TestAdapter {
+    struct DefaultTestAdapter {
         applied_migrations: HashSet<Uuid>,
     }
 
-    impl TestAdapter {
-        fn new() -> TestAdapter {
-            TestAdapter { applied_migrations: HashSet::new() }
+    impl DefaultTestAdapter {
+        fn new() -> DefaultTestAdapter {
+            DefaultTestAdapter { applied_migrations: HashSet::new() }
         }
     }
 
     #[derive(Debug)]
     struct TestAdapterError;
 
-    impl Adapter for TestAdapter {
-        type MigrationType = Migration;
+    impl Adapter for DefaultTestAdapter {
+        type MigrationType = TestMigration;
 
         type Error = TestAdapterError;
 
@@ -158,9 +157,25 @@ mod tests {
         }
     }
 
-    struct TestMigration {
+    pub trait TestAdapter: Adapter {
+        fn mock(id: Uuid, dependencies: HashSet<Uuid>) -> Box<Self::MigrationType>;
+    }
+
+    impl TestAdapter for DefaultTestAdapter {
+        fn mock(id: Uuid, dependencies: HashSet<Uuid>) -> Box<Self::MigrationType> {
+            Box::new(TestMigration::new(id, dependencies))
+        }
+    }
+
+    pub struct TestMigration {
         id: Uuid,
         dependencies: HashSet<Uuid>,
+    }
+
+    impl TestMigration {
+        pub fn new(id: Uuid, dependencies: HashSet<Uuid>) -> TestMigration {
+            TestMigration { id, dependencies }
+        }
     }
 
     impl Migration for TestMigration {
@@ -177,47 +192,40 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_single_migration() {
-        let migration1 = Box::new(TestMigration {
-            id: Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),
-            dependencies: HashSet::new(),
-        });
+    pub fn test_single_migration<A: TestAdapter>(adapter: A) {
+        let migration1 = A::mock(
+            Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),
+            HashSet::new(),
+        );
         let uuid1 = migration1.id();
 
-        let adapter = TestAdapter::new();
-
-        let mut migrator = Migrator::new(adapter);
+        let mut migrator: Migrator<A> = Migrator::new(adapter);
 
         migrator.register(migration1);
-        migrator.up(None);
+        migrator.up(None).expect("Up migration failed");
 
         assert!(migrator.adapter.applied_migrations().unwrap().contains(
             &uuid1,
         ));
     }
 
-    #[test]
-    fn test_migration_chain() {
-        let migration1 = Box::new(TestMigration {
-            id: Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),
-            dependencies: HashSet::new(),
-        });
-        let migration2 = Box::new(TestMigration {
-            id: Uuid::parse_str("4885e8ab-dafa-4d76-a565-2dee8b04ef60").unwrap(),
-            dependencies: vec![migration1.id().clone()].into_iter().collect(),
-        });
-        let migration3 = Box::new(TestMigration {
-            id: Uuid::parse_str("c5d07448-851f-45e8-8fa7-4823d5250609").unwrap(),
-            dependencies: vec![migration2.id().clone()].into_iter().collect(),
-        });
-
+    pub fn test_migration_chain<A: TestAdapter>(adapter: A) {
+        let migration1 = A::mock(
+            Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),
+            HashSet::new(),
+        );
+        let migration2 = A::mock(
+            Uuid::parse_str("4885e8ab-dafa-4d76-a565-2dee8b04ef60").unwrap(),
+            vec![migration1.id().clone()].into_iter().collect(),
+        );
+        let migration3 = A::mock(
+            Uuid::parse_str("c5d07448-851f-45e8-8fa7-4823d5250609").unwrap(),
+            vec![migration2.id().clone()].into_iter().collect(),
+        );
 
         let uuid1 = migration1.id();
         let uuid2 = migration2.id();
         let uuid3 = migration3.id();
-
-        let adapter = TestAdapter::new();
 
         let mut migrator = Migrator::new(adapter);
 
@@ -225,7 +233,7 @@ mod tests {
         migrator.register(migration2);
         migrator.register(migration3);
 
-        migrator.up(Some(uuid2));
+        migrator.up(Some(uuid2)).expect("Up migration failed");
 
         assert!(migrator.adapter.applied_migrations().unwrap().contains(
             &uuid1,
@@ -236,5 +244,17 @@ mod tests {
         assert!(!migrator.adapter.applied_migrations().unwrap().contains(
             &uuid3,
         ));
+    }
+
+    #[test]
+    fn test_single_migration_default() {
+        let adapter = DefaultTestAdapter::new();
+        test_single_migration(adapter);
+    }
+
+    #[test]
+    fn test_migration_chain_default() {
+        let adapter = DefaultTestAdapter::new();
+        test_migration_chain(adapter);
     }
 }

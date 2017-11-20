@@ -14,4 +14,4 @@ travis-ci = { repository = "aschampion/schemer", branch = "master" }
 
 [dependencies]
 daggy = "*"
-uuid = { version = "0.4", features = ["use_std"] }
+uuid = { version = "*", features = ["use_std"] }
