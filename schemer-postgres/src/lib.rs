@@ -1,4 +1,8 @@
 extern crate postgres;
+#[cfg(test)]
+#[macro_use]
+extern crate schemer;
+#[cfg(not(test))]
 extern crate schemer;
 extern crate uuid;
 
@@ -111,7 +115,7 @@ impl Adapter for PostgresAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use schemer::tests::*;
+    use schemer::testing::*;
 
     impl PostgresMigration for TestMigration {}
 
@@ -129,15 +133,5 @@ mod tests {
         adapter
     }
 
-    #[test]
-    fn test_single_migration_postgres() {
-        let adapter = build_test_adapter();
-        test_single_migration(adapter);
-    }
-
-    #[test]
-    fn test_migration_chain_postgres() {
-        let adapter = build_test_adapter();
-        test_migration_chain(adapter);
-    }
+    test_schemer_adapter!(build_test_adapter());
 }

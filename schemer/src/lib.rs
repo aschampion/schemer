@@ -46,7 +46,7 @@ impl<T: Adapter> Migrator<T> {
         }
     }
 
-    fn register(&mut self, migration: Box<T::MigrationType>) -> Result<(), T::Error> {
+    pub fn register(&mut self, migration: Box<T::MigrationType>) -> Result<(), T::Error> {
         // TODO: check that this Id doesn't already exist in the graph.
         let id = migration.id();
         let depends = migration.dependencies();
@@ -62,7 +62,7 @@ impl<T: Adapter> Migrator<T> {
         Ok(())
     }
 
-    fn up(&mut self, to: Option<Uuid>) -> Result<(), T::Error> {
+    pub fn up(&mut self, to: Option<Uuid>) -> Result<(), T::Error> {
         let mut target_ids = HashSet::new();
         match to {
             Some(sink_id) => {
@@ -115,56 +115,17 @@ impl<T: Adapter> Migrator<T> {
         Ok(())
     }
 
-    fn down(&mut self, to: Option<Uuid>) -> Result<(), T::Error> {
+    pub fn down(&mut self, to: Option<Uuid>) -> Result<(), T::Error> {
         unimplemented!();
     }
 }
 
-// #[cfg(test)]
-pub mod tests {
+#[macro_use]
+pub mod testing {
     use super::*;
-
-    struct DefaultTestAdapter {
-        applied_migrations: HashSet<Uuid>,
-    }
-
-    impl DefaultTestAdapter {
-        fn new() -> DefaultTestAdapter {
-            DefaultTestAdapter { applied_migrations: HashSet::new() }
-        }
-    }
-
-    #[derive(Debug)]
-    struct TestAdapterError;
-
-    impl Adapter for DefaultTestAdapter {
-        type MigrationType = TestMigration;
-
-        type Error = TestAdapterError;
-
-        fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
-            Ok(self.applied_migrations.clone())
-        }
-
-        fn apply_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
-            self.applied_migrations.insert(migration.id());
-            Ok(())
-        }
-
-        fn revert_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
-            self.applied_migrations.remove(&migration.id());
-            Ok(())
-        }
-    }
 
     pub trait TestAdapter: Adapter {
         fn mock(id: Uuid, dependencies: HashSet<Uuid>) -> Box<Self::MigrationType>;
-    }
-
-    impl TestAdapter for DefaultTestAdapter {
-        fn mock(id: Uuid, dependencies: HashSet<Uuid>) -> Box<Self::MigrationType> {
-            Box::new(TestMigration::new(id, dependencies))
-        }
     }
 
     pub struct TestMigration {
@@ -192,6 +153,23 @@ pub mod tests {
         }
     }
 
+    #[macro_export]
+    macro_rules! test_schemer_adapter {
+        ($constructor:expr) => {
+            #[test]
+            fn test_single_migration() {
+                let adapter = $constructor;
+                $crate::testing::test_single_migration(adapter);
+            }
+
+            #[test]
+            fn test_migration_chain() {
+                let adapter = $constructor;
+                $crate::testing::test_migration_chain(adapter);
+            }
+        }
+    }
+
     pub fn test_single_migration<A: TestAdapter>(adapter: A) {
         let migration1 = A::mock(
             Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),
@@ -201,7 +179,7 @@ pub mod tests {
 
         let mut migrator: Migrator<A> = Migrator::new(adapter);
 
-        migrator.register(migration1);
+        migrator.register(migration1).expect("Migration 1 registration failed");
         migrator.up(None).expect("Up migration failed");
 
         assert!(migrator.adapter.applied_migrations().unwrap().contains(
@@ -229,9 +207,9 @@ pub mod tests {
 
         let mut migrator = Migrator::new(adapter);
 
-        migrator.register(migration1);
-        migrator.register(migration2);
-        migrator.register(migration3);
+        migrator.register(migration1).expect("Migration 1 registration failed");
+        migrator.register(migration2).expect("Migration 2 registration failed");
+        migrator.register(migration3).expect("Migration 3 registration failed");
 
         migrator.up(Some(uuid2)).expect("Up migration failed");
 
@@ -245,16 +223,63 @@ pub mod tests {
             &uuid3,
         ));
     }
+}
 
-    #[test]
-    fn test_single_migration_default() {
-        let adapter = DefaultTestAdapter::new();
-        test_single_migration(adapter);
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use super::testing::*;
+
+    struct DefaultTestAdapter {
+        applied_migrations: HashSet<Uuid>,
     }
 
-    #[test]
-    fn test_migration_chain_default() {
-        let adapter = DefaultTestAdapter::new();
-        test_migration_chain(adapter);
+    impl DefaultTestAdapter {
+        fn new() -> DefaultTestAdapter {
+            DefaultTestAdapter { applied_migrations: HashSet::new() }
+        }
     }
+
+    #[derive(Debug)]
+    struct DefaultTestAdapterError;
+
+    impl Adapter for DefaultTestAdapter {
+        type MigrationType = Migration;
+
+        type Error = DefaultTestAdapterError;
+
+        fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
+            Ok(self.applied_migrations.clone())
+        }
+
+        fn apply_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
+            self.applied_migrations.insert(migration.id());
+            Ok(())
+        }
+
+        fn revert_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
+            self.applied_migrations.remove(&migration.id());
+            Ok(())
+        }
+    }
+
+    impl TestAdapter for DefaultTestAdapter {
+        fn mock(id: Uuid, dependencies: HashSet<Uuid>) -> Box<Self::MigrationType> {
+            Box::new(TestMigration::new(id, dependencies))
+        }
+    }
+
+    test_schemer_adapter!(DefaultTestAdapter::new());
+
+    // #[test]
+    // fn test_single_migration_default() {
+    //     let adapter = DefaultTestAdapter::new();
+    //     test_single_migration(adapter);
+    // }
+
+    // #[test]
+    // fn test_migration_chain_default() {
+    //     let adapter = DefaultTestAdapter::new();
+    //     test_migration_chain(adapter);
+    // }
 }
