@@ -68,9 +68,7 @@ impl Adapter for PostgresAdapter {
     fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
         let rows = self.conn.query(
             &format!(
-                r#"
-                    SELECT id FROM {};
-                "#,
+                "SELECT id FROM {};",
                 self.migration_metadata_table
             ),
             &[],
@@ -83,15 +81,12 @@ impl Adapter for PostgresAdapter {
         migration.up(&trans)?;
         trans.execute(
             &format!(
-                r#"
-                    INSERT INTO {} (id) VALUES ($1::uuid);
-                "#,
+                "INSERT INTO {} (id) VALUES ($1::uuid);",
                 self.migration_metadata_table
             ),
             &[&migration.id()],
         )?;
-        trans.set_commit();
-        Ok(())
+        Ok(trans.commit()?)
     }
 
     fn revert_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
@@ -99,15 +94,12 @@ impl Adapter for PostgresAdapter {
         migration.down(&trans)?;
         trans.execute(
             &format!(
-                r#"
-                    DELETE FROM {} WHERE id = $1::uuid;
-                "#,
+                "DELETE FROM {} WHERE id = $1::uuid;",
                 self.migration_metadata_table
             ),
             &[&migration.id()],
         )?;
-        trans.set_commit();
-        Ok(())
+        Ok(trans.commit()?)
     }
 }
 

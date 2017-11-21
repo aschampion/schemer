@@ -7,7 +7,6 @@ use std::fmt::Debug;
 
 use daggy::Dag;
 use daggy::petgraph::EdgeDirection;
-use daggy::Walker;
 use uuid::Uuid;
 
 
@@ -62,17 +61,23 @@ impl<T: Adapter> Migrator<T> {
         Ok(())
     }
 
-    pub fn up(&mut self, to: Option<Uuid>) -> Result<(), T::Error> {
+    /// Collect the ids of recursively dependent migrations in `dir` induced
+    /// starting from `id`. If `dir` is `Incoming`, this is all ancestors
+    /// (dependencies); if `Outgoing`, this is all descendents (dependents).
+    /// If `id` is `None`, this is all migrations starting from the sources or
+    /// the sinks, respectively.
+    fn induced_stream(&self, id: Option<Uuid>, dir: EdgeDirection) -> HashSet<Uuid> {
         let mut target_ids = HashSet::new();
-        match to {
-            Some(sink_id) => {
-                target_ids.insert(sink_id);
+        match id {
+            Some(id) => {
+                target_ids.insert(id);
             }
+            // This will eventually yield all migrations, so could be optimized.
             None => {
                 target_ids.extend(
                     self.dependencies
                         .graph()
-                        .externals(EdgeDirection::Outgoing)
+                        .externals(dir.opposite())
                         .map(|idx| {
                             self.dependencies.node_weight(idx).expect("Impossible").id()
                         }),
@@ -80,7 +85,6 @@ impl<T: Adapter> Migrator<T> {
             }
         }
 
-        let applied_migrations = self.adapter.applied_migrations()?;
         let mut to_visit: VecDeque<_> = target_ids
             .clone()
             .iter()
@@ -92,15 +96,21 @@ impl<T: Adapter> Migrator<T> {
             target_ids.insert(id);
             to_visit.extend(
                 self.dependencies
-                    .parents(idx)
-                    .iter(&self.dependencies)
-                    .map(|(_, p_idx)| p_idx),
+                    .graph()
+                    .neighbors_directed(idx, dir),
             );
         }
 
+        target_ids
+    }
+
+    pub fn up(&mut self, to: Option<Uuid>) -> Result<(), T::Error> {
+        let target_ids = self.induced_stream(to, EdgeDirection::Incoming);
+
         // TODO: This is assuming the applied_migrations state is consistent
         // with the dependency graph.
-        for idx in &daggy::petgraph::algo::toposort(self.dependencies.graph().clone(), None)
+        let applied_migrations = self.adapter.applied_migrations()?;
+        for idx in &daggy::petgraph::algo::toposort(self.dependencies.graph(), None)
             .expect("Impossible because dependencies are a DAG")
         {
             let migration = self.dependencies.node_weight(*idx).expect("Impossible");
@@ -109,14 +119,34 @@ impl<T: Adapter> Migrator<T> {
                 continue;
             }
 
-            self.adapter.apply_migration(&migration)?;
+            self.adapter.apply_migration(migration)?;
         }
 
         Ok(())
     }
 
     pub fn down(&mut self, to: Option<Uuid>) -> Result<(), T::Error> {
-        unimplemented!();
+        let mut target_ids = self.induced_stream(to, EdgeDirection::Outgoing);
+        if let Some(sink_id) = to {
+            target_ids.remove(&sink_id);
+        }
+
+        let applied_migrations = self.adapter.applied_migrations()?;
+        for idx in daggy::petgraph::algo::toposort(self.dependencies.graph(), None)
+            .expect("Impossible because dependencies are a DAG")
+            .iter()
+            .rev()
+        {
+            let migration = self.dependencies.node_weight(*idx).expect("Impossible");
+            let id = migration.id();
+            if !applied_migrations.contains(&id) || !target_ids.contains(&id) {
+                continue;
+            }
+
+            self.adapter.revert_migration(migration)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -141,7 +171,7 @@ pub mod testing {
 
     impl Migration for TestMigration {
         fn id(&self) -> Uuid {
-            self.id.clone()
+            self.id
         }
 
         fn dependencies(&self) -> HashSet<Uuid> {
@@ -185,6 +215,12 @@ pub mod testing {
         assert!(migrator.adapter.applied_migrations().unwrap().contains(
             &uuid1,
         ));
+
+        migrator.down(None).expect("Down migration failed");
+
+        assert!(!migrator.adapter.applied_migrations().unwrap().contains(
+            &uuid1,
+        ));
     }
 
     pub fn test_migration_chain<A: TestAdapter>(adapter: A) {
@@ -194,11 +230,11 @@ pub mod testing {
         );
         let migration2 = A::mock(
             Uuid::parse_str("4885e8ab-dafa-4d76-a565-2dee8b04ef60").unwrap(),
-            vec![migration1.id().clone()].into_iter().collect(),
+            vec![migration1.id()].into_iter().collect(),
         );
         let migration3 = A::mock(
             Uuid::parse_str("c5d07448-851f-45e8-8fa7-4823d5250609").unwrap(),
-            vec![migration2.id().clone()].into_iter().collect(),
+            vec![migration2.id()].into_iter().collect(),
         );
 
         let uuid1 = migration1.id();
@@ -213,15 +249,21 @@ pub mod testing {
 
         migrator.up(Some(uuid2)).expect("Up migration failed");
 
-        assert!(migrator.adapter.applied_migrations().unwrap().contains(
-            &uuid1,
-        ));
-        assert!(migrator.adapter.applied_migrations().unwrap().contains(
-            &uuid2,
-        ));
-        assert!(!migrator.adapter.applied_migrations().unwrap().contains(
-            &uuid3,
-        ));
+        {
+            let applied = migrator.adapter.applied_migrations().unwrap();
+            assert!(applied.contains(&uuid1));
+            assert!(applied.contains(&uuid2));
+            assert!(!applied.contains(&uuid3));
+        }
+
+        migrator.down(Some(uuid1)).expect("Down migration failed");
+
+        {
+            let applied = migrator.adapter.applied_migrations().unwrap();
+            assert!(applied.contains(&uuid1));
+            assert!(!applied.contains(&uuid2));
+            assert!(!applied.contains(&uuid3));
+        }
     }
 }
 
@@ -270,16 +312,4 @@ pub mod tests {
     }
 
     test_schemer_adapter!(DefaultTestAdapter::new());
-
-    // #[test]
-    // fn test_single_migration_default() {
-    //     let adapter = DefaultTestAdapter::new();
-    //     test_single_migration(adapter);
-    // }
-
-    // #[test]
-    // fn test_migration_chain_default() {
-    //     let adapter = DefaultTestAdapter::new();
-    //     test_migration_chain(adapter);
-    // }
 }
