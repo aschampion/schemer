@@ -38,7 +38,7 @@ impl PostgresAdapter {
     ) -> Result<PostgresAdapter, PostgresError> {
         Ok(PostgresAdapter {
             conn: Connection::connect(url, TlsMode::None)?,
-            migration_metadata_table: table.unwrap_or("_schemer".into()),
+            migration_metadata_table: table.unwrap_or_else(|| "_schemer".into()),
         })
     }
 
