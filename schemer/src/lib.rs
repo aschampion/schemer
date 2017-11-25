@@ -1,3 +1,12 @@
+//! A database schema migration library that supports directed acyclic graph
+//! (DAG) dependencies between migrations.
+//!
+//! To use with a specific database, an adapter is required. Known adapter
+//! creates:
+//!
+//! - PostgreSQL: `schemer_postgres`
+#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
+
 extern crate daggy;
 extern crate failure;
 #[macro_use]
@@ -18,14 +27,21 @@ use uuid::Uuid;
 pub mod testing;
 
 
+/// Metadata for defining the identity and dependence relations of migrations.
+/// Specific adapters require additional traits for actual application and
+/// reversion of migrations.
 pub trait Migration {
+    /// Unique identifier for this migration.
     fn id(&self) -> Uuid;
 
+    /// Set of IDs of all direct dependencies of this migration.
     fn dependencies(&self) -> HashSet<Uuid>;
 
+    /// User-targetted description of this migration.
     fn description(&self) -> &'static str;
 }
 
+/// Direction in which a migration is applied (`Up`) or reverted (`Down`).
 #[derive(Debug)]
 pub enum MigrationDirection {
     Up,
@@ -42,18 +58,26 @@ impl Display for MigrationDirection {
     }
 }
 
+/// Trait necessary to adapt schemer's migration management to a stateful
+/// backend.
 pub trait Adapter {
+    /// Type migrations must implement for this adapter.
     type MigrationType: Migration + ?Sized;
 
+    /// Type of errors returned by this adapter.
     type Error: Debug + Fail;
 
+    /// Returns the set of IDs for migrations that have been applied.
     fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error>;
 
+    /// Apply a single migration.
     fn apply_migration(&mut self, &Self::MigrationType) -> Result<(), Self::Error>;
 
+    /// Revert a single migration.
     fn revert_migration(&mut self, &Self::MigrationType) -> Result<(), Self::Error>;
 }
 
+/// Error resulting from the definition of migration identity and dependency.
 #[derive(Debug, Fail)]
 pub enum DependencyError {
     #[fail(display = "Duplicate migration ID {}", _0)]
@@ -67,6 +91,8 @@ pub enum DependencyError {
     }
 }
 
+/// Error resulting either from migration definitions or from migration
+/// application with an adapter.
 #[derive(Debug, Fail)]
 pub enum MigratorError<T: Debug + Fail> {
     #[fail(display = "An error occurred due to migration dependencies")]
@@ -88,6 +114,7 @@ impl<T: Debug + Fail> From<T> for MigratorError<T> {
     }
 }
 
+/// Primary schemer type for defining and applying migrations.
 pub struct Migrator<T: Adapter> {
     adapter: T,
     dependencies: Dag<Box<T::MigrationType>, ()>,
@@ -95,7 +122,8 @@ pub struct Migrator<T: Adapter> {
 }
 
 impl<T: Adapter> Migrator<T> {
-    fn new(adapter: T) -> Migrator<T> {
+    /// Create a `Migrator` using the given `Adapter`.
+    pub fn new(adapter: T) -> Migrator<T> {
         Migrator {
             adapter: adapter,
             dependencies: Dag::new(),
@@ -103,6 +131,7 @@ impl<T: Adapter> Migrator<T> {
         }
     }
 
+    /// Register a migration into the dependency graph.
     pub fn register(&mut self, migration: Box<T::MigrationType>) -> Result<(), MigratorError<T::Error>> {
         let id = migration.id();
         if self.id_map.contains_key(&id) {
@@ -173,6 +202,10 @@ impl<T: Adapter> Migrator<T> {
         Ok(target_ids)
     }
 
+    /// Apply migrations as necessary to so that the specified migration is
+    /// applied (inclusive).
+    ///
+    /// If `to` is `None`, apply all registered migrations.
     pub fn up(&mut self, to: Option<Uuid>) -> Result<(), MigratorError<T::Error>> {
         let target_ids = self.induced_stream(to, EdgeDirection::Incoming)
                              .map_err(MigratorError::Dependency)?;
@@ -202,6 +235,11 @@ impl<T: Adapter> Migrator<T> {
         Ok(())
     }
 
+    /// Revert migrations as necessary so that no migrations dependent on the
+    /// specified migration are applied. If the specified migration was already
+    /// applied, it will still be applied.
+    ///
+    /// If `to` is `None`, revert all applied migrations.
     pub fn down(&mut self, to: Option<Uuid>) -> Result<(), MigratorError<T::Error>> {
         let mut target_ids = self.induced_stream(to, EdgeDirection::Outgoing)
                                  .map_err(MigratorError::Dependency)?;

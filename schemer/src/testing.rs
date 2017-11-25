@@ -1,9 +1,19 @@
+//! Test harness for applying a generic test suite to any backend-specific
+//! schemer adapter.
+
 use super::*;
 
+/// A trait required for running the generic test suite on an `Adapter`.
 pub trait TestAdapter: Adapter {
+    /// Construct a mock, no-op migration of the adapter's `MigrationType`.
+    ///
+    /// For convenience adapters can implement their migration traits on
+    /// `TestMigration` and construct those here.
     fn mock(id: Uuid, dependencies: HashSet<Uuid>) -> Box<Self::MigrationType>;
 }
 
+/// A trivial struct implementing `Migration` on which adapters can build their
+/// mock migrations.
 pub struct TestMigration {
     id: Uuid,
     dependencies: HashSet<Uuid>,
@@ -29,6 +39,23 @@ impl Migration for TestMigration {
     }
 }
 
+/// Test an `Adapter` with the generic test suite.
+///
+/// Note that the adapter must also implement the `TestAdapter` trait. This
+/// should be done only for the testing configuration of the adapter's crate,
+/// as it is not necessary for normal behavior.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// #[macro_use] extern crate schemer;
+///
+/// fn construct_my_adapter_test_fixture() -> MyAdapterType {
+///     MyAdapterType {}
+/// }
+///
+/// test_schemer_adapter!(construct_my_adapter_test_fixture());
+/// ```
 #[macro_export]
 macro_rules! test_schemer_adapter {
     ($constructor:expr) => {
@@ -52,6 +79,7 @@ macro_rules! test_schemer_adapter {
     }
 }
 
+/// Test the application and reversion of a singleton migration.
 pub fn test_single_migration<A: TestAdapter>(adapter: A) {
     let migration1 = A::mock(
         Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),
@@ -75,6 +103,8 @@ pub fn test_single_migration<A: TestAdapter>(adapter: A) {
     ));
 }
 
+/// Test the partial application and reversion of a chain of three dependent
+/// migrations.
 pub fn test_migration_chain<A: TestAdapter>(adapter: A) {
     let migration1 = A::mock(
         Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),
@@ -118,6 +148,7 @@ pub fn test_migration_chain<A: TestAdapter>(adapter: A) {
     }
 }
 
+/// Test that application and reversion of two DAG components are independent.
 pub fn test_multi_component_dag<A: TestAdapter>(adapter: A) {
     let migration1 = A::mock(
         Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),

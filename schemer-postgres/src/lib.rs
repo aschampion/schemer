@@ -1,3 +1,65 @@
+//! An adapter enabling use of the schemer schema migration library with
+//! PostgreSQL.
+//!
+//! # Examples:
+//!
+//! ```rust
+//! extern crate postgres;
+//! extern crate schemer;
+//! extern crate schemer_postgres;
+//! extern crate uuid;
+//!
+//! use std::collections::HashSet;
+//!
+//! use postgres::Connection;
+//! use postgres::transaction::Transaction;
+//! use schemer::{Migration, Migrator};
+//! use schemer_postgres::{PostgresAdapter, PostgresAdapterError, PostgresMigration};
+//! use uuid::Uuid;
+//!
+//! struct MyExampleMigration {}
+//!
+//! impl Migration for MyExampleMigration {
+//!     fn id(&self) -> Uuid {
+//!         Uuid::parse_str("4885e8ab-dafa-4d76-a565-2dee8b04ef60").unwrap()
+//!     }
+//!
+//!     fn dependencies(&self) -> HashSet<Uuid> {
+//!         HashSet::new()
+//!     }
+//!
+//!     fn description(&self) -> &'static str {
+//!         "An example migration without dependencies."
+//!     }
+//! }
+//!
+//! impl PostgresMigration for MyExampleMigration {
+//!     fn up(&self, transaction: &Transaction) -> Result<(), PostgresAdapterError> {
+//!         transaction.execute("CREATE TABLE my_example (id integer PRIMARY KEY);", &[])?;
+//!         Ok(())
+//!     }
+//!
+//!     fn down(&self, transaction: &Transaction) -> Result<(), PostgresAdapterError> {
+//!         transaction.execute("DROP TABLE my_example;", &[])?;
+//!         Ok(())
+//!     }
+//! }
+//!
+//! fn main() {
+//!     let conn = Connection::connect(
+//!         "postgresql://postgres@localhost/?search_path=pg_temp",
+//!         postgres::TlsMode::None).unwrap();
+//!     let adapter = PostgresAdapter::new(&conn, None);
+//!
+//!     let mut migrator = Migrator::new(adapter);
+//!
+//!     let migration = Box::new(MyExampleMigration {});
+//!     migrator.register(migration);
+//!     migrator.up(None);
+//! }
+//! ```
+#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
+
 extern crate postgres;
 #[cfg(test)]
 #[macro_use]
@@ -16,32 +78,57 @@ use uuid::Uuid;
 use schemer::{Adapter, Migration};
 
 
+/// PostgreSQL-specific trait for schema migrations.
 pub trait PostgresMigration: Migration {
+    /// Apply a migration to the database using a transaction.
     fn up(&self, _transaction: &Transaction) -> Result<(), PostgresError> {
         Ok(())
     }
 
+    /// Revert a migration to the database using a transaction.
     fn down(&self, _transaction: &Transaction) -> Result<(), PostgresError> {
         Ok(())
     }
 }
 
+pub type PostgresAdapterError = PostgresError;
+
+/// Adapter between schemer and PostgreSQL.
 pub struct PostgresAdapter<'a> {
     conn: &'a Connection,
     migration_metadata_table: String,
 }
 
 impl<'a> PostgresAdapter<'a> {
+    /// Construct a PostgreSQL schemer adapter.
+    ///
+    /// `table_name` specifies the name of the table that schemer will use
+    /// for storing metadata about applied migrations. If `None`, a default
+    /// will be used.
+    ///
+    /// ```rust
+    /// # extern crate postgres;
+    /// # extern crate schemer_postgres;
+    /// #
+    /// # fn main() {
+    /// let conn = postgres::Connection::connect(
+    ///     "postgresql://postgres@localhost/?search_path=pg_temp",
+    ///     postgres::TlsMode::None).unwrap();
+    /// let adapter = schemer_postgres::PostgresAdapter::new(&conn, None);
+    /// # }
+    /// ```
     pub fn new(
         conn: &'a Connection,
-        table: Option<String>,
+        table_name: Option<String>,
     ) -> PostgresAdapter<'a> {
         PostgresAdapter {
             conn: conn,
-            migration_metadata_table: table.unwrap_or_else(|| "_schemer".into()),
+            migration_metadata_table: table_name.unwrap_or_else(|| "_schemer".into()),
         }
     }
 
+    /// Initialize the schemer metadata schema. This must be called before
+    /// using `Migrator` with this adapter. This is safe to call multiple times.
     pub fn init(&self) -> Result<(), PostgresError> {
         self.conn.execute(
             &format!(
@@ -63,7 +150,7 @@ impl<'a> PostgresAdapter<'a> {
 impl<'a> Adapter for PostgresAdapter<'a> {
     type MigrationType = PostgresMigration;
 
-    type Error = PostgresError;
+    type Error = PostgresAdapterError;
 
     fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
         let rows = self.conn.query(

@@ -6,7 +6,7 @@ Schemer is a database schema migration library for Rust that supports directed a
 
 Other Rust schema migration libraries to consider if you do not require DAG migration dependencies:
 
-- [schemamama](https://crates.io/crates/schemamama) (which inspired Schemer)
+- [schemamama](https://crates.io/crates/schemamama) (recommended -- this is the basis for Schemer's API)
 - [dbmigrate](https://crates.io/crates/dbmigrate)
 - [migrant](https://crates.io/crates/migrant)
 
