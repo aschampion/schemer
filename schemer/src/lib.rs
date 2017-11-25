@@ -267,14 +267,19 @@ pub mod testing {
     #[macro_export]
     macro_rules! test_schemer_adapter {
         ($constructor:expr) => {
+            test_schemer_adapter!({}, $constructor);
+        };
+        ($setup:stmt, $constructor:expr) => {
             #[test]
             fn test_single_migration() {
+                $setup;
                 let adapter = $constructor;
                 $crate::testing::test_single_migration(adapter);
             }
 
             #[test]
             fn test_migration_chain() {
+                $setup;
                 let adapter = $constructor;
                 $crate::testing::test_migration_chain(adapter);
             }

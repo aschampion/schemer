@@ -9,7 +9,7 @@ extern crate uuid;
 
 use std::collections::HashSet;
 
-use postgres::{Connection, Error as PostgresError, TlsMode};
+use postgres::{Connection, Error as PostgresError};
 use postgres::transaction::Transaction;
 use uuid::Uuid;
 
@@ -26,20 +26,20 @@ pub trait PostgresMigration: Migration {
     }
 }
 
-pub struct PostgresAdapter {
-    conn: Connection,
+pub struct PostgresAdapter<'a> {
+    conn: &'a Connection,
     migration_metadata_table: String,
 }
 
-impl PostgresAdapter {
-    pub fn new<T: postgres::params::IntoConnectParams>(
-        url: T,
+impl<'a> PostgresAdapter<'a> {
+    pub fn new(
+        conn: &'a Connection,
         table: Option<String>,
-    ) -> Result<PostgresAdapter, PostgresError> {
-        Ok(PostgresAdapter {
-            conn: Connection::connect(url, TlsMode::None)?,
+    ) -> PostgresAdapter<'a> {
+        PostgresAdapter {
+            conn: conn,
             migration_metadata_table: table.unwrap_or_else(|| "_schemer".into()),
-        })
+        }
     }
 
     pub fn init(&self) -> Result<(), PostgresError> {
@@ -60,7 +60,7 @@ impl PostgresAdapter {
     }
 }
 
-impl Adapter for PostgresAdapter {
+impl<'a> Adapter for PostgresAdapter<'a> {
     type MigrationType = PostgresMigration;
 
     type Error = PostgresError;
@@ -107,23 +107,29 @@ impl Adapter for PostgresAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use postgres::TlsMode;
     use schemer::testing::*;
 
     impl PostgresMigration for TestMigration {}
 
-    impl TestAdapter for PostgresAdapter {
+    impl<'a> TestAdapter for PostgresAdapter<'a> {
         fn mock(id: Uuid, dependencies: HashSet<Uuid>) -> Box<Self::MigrationType> {
             Box::new(TestMigration::new(id, dependencies))
         }
     }
 
-    fn build_test_adapter() -> PostgresAdapter {
-        let adapter =
-            PostgresAdapter::new("postgresql://postgres@localhost/?search_path=pg_temp", None)
-                .unwrap();
+    fn build_test_connection () -> Connection {
+        Connection::connect("postgresql://postgres@localhost/?search_path=pg_temp", TlsMode::None)
+            .unwrap()
+    }
+
+    fn build_test_adapter(conn: &Connection) -> PostgresAdapter {
+        let adapter = PostgresAdapter::new(conn, None);
         adapter.init().unwrap();
         adapter
     }
 
-    test_schemer_adapter!(build_test_adapter());
+    test_schemer_adapter!(
+        let conn = build_test_connection(),
+        build_test_adapter(&conn));
 }
