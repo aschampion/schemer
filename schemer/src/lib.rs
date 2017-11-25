@@ -283,6 +283,13 @@ pub mod testing {
                 let adapter = $constructor;
                 $crate::testing::test_migration_chain(adapter);
             }
+
+            #[test]
+            fn test_multi_component_dag() {
+                $setup;
+                let adapter = $constructor;
+                $crate::testing::test_multi_component_dag(adapter);
+            }
         }
     }
 
@@ -349,6 +356,87 @@ pub mod testing {
             assert!(applied.contains(&uuid1));
             assert!(!applied.contains(&uuid2));
             assert!(!applied.contains(&uuid3));
+        }
+    }
+
+    pub fn test_multi_component_dag<A: TestAdapter>(adapter: A) {
+        let migration1 = A::mock(
+            Uuid::parse_str("bc960dc8-0e4a-4182-a62a-8e776d1e2b30").unwrap(),
+            HashSet::new(),
+        );
+        let migration2 = A::mock(
+            Uuid::parse_str("4885e8ab-dafa-4d76-a565-2dee8b04ef60").unwrap(),
+            vec![migration1.id()].into_iter().collect(),
+        );
+        let migration3 = A::mock(
+            Uuid::parse_str("c5d07448-851f-45e8-8fa7-4823d5250609").unwrap(),
+            HashSet::new(),
+        );
+        let migration4 = A::mock(
+            Uuid::parse_str("9433a432-386f-467e-a59f-a9fb7e249767").unwrap(),
+            vec![migration3.id()].into_iter().collect(),
+        );
+
+        let uuid1 = migration1.id();
+        let uuid2 = migration2.id();
+        let uuid3 = migration3.id();
+        let uuid4 = migration4.id();
+
+        let mut migrator = Migrator::new(adapter);
+
+        migrator.register(migration1).expect("Migration 1 registration failed");
+        migrator.register(migration2).expect("Migration 2 registration failed");
+        migrator.register(migration3).expect("Migration 3 registration failed");
+        migrator.register(migration4).expect("Migration 4 registration failed");
+
+        migrator.up(Some(uuid2)).expect("Up migration failed");
+
+        {
+            let applied = migrator.adapter.applied_migrations().unwrap();
+            assert!(applied.contains(&uuid1));
+            assert!(applied.contains(&uuid2));
+            assert!(!applied.contains(&uuid3));
+            assert!(!applied.contains(&uuid4));
+        }
+
+        migrator.down(Some(uuid1)).expect("Down migration failed");
+
+        {
+            let applied = migrator.adapter.applied_migrations().unwrap();
+            assert!(applied.contains(&uuid1));
+            assert!(!applied.contains(&uuid2));
+            assert!(!applied.contains(&uuid3));
+            assert!(!applied.contains(&uuid4));
+        }
+
+        migrator.up(Some(uuid3)).expect("Up migration failed");
+
+        {
+            let applied = migrator.adapter.applied_migrations().unwrap();
+            assert!(applied.contains(&uuid1));
+            assert!(!applied.contains(&uuid2));
+            assert!(applied.contains(&uuid3));
+            assert!(!applied.contains(&uuid4));
+        }
+
+        migrator.up(None).expect("Up migration failed");
+
+        {
+            let applied = migrator.adapter.applied_migrations().unwrap();
+            assert!(applied.contains(&uuid1));
+            assert!(applied.contains(&uuid2));
+            assert!(applied.contains(&uuid3));
+            assert!(applied.contains(&uuid4));
+        }
+
+        migrator.down(None).expect("Down migration failed");
+
+        {
+            let applied = migrator.adapter.applied_migrations().unwrap();
+            assert!(!applied.contains(&uuid1));
+            assert!(!applied.contains(&uuid2));
+            assert!(!applied.contains(&uuid3));
+            assert!(!applied.contains(&uuid4));
         }
     }
 }
