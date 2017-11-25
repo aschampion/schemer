@@ -35,26 +35,20 @@ macro_rules! test_schemer_adapter {
         test_schemer_adapter!({}, $constructor);
     };
     ($setup:stmt, $constructor:expr) => {
-        #[test]
-        fn test_single_migration() {
-            $setup;
-            let adapter = $constructor;
-            $crate::testing::test_single_migration(adapter);
-        }
-
-        #[test]
-        fn test_migration_chain() {
-            $setup;
-            let adapter = $constructor;
-            $crate::testing::test_migration_chain(adapter);
-        }
-
-        #[test]
-        fn test_multi_component_dag() {
-            $setup;
-            let adapter = $constructor;
-            $crate::testing::test_multi_component_dag(adapter);
-        }
+        test_schemer_adapter!($setup, $constructor,
+            test_single_migration,
+            test_migration_chain,
+            test_multi_component_dag,);
+    };
+    ($setup:stmt, $constructor:expr, $($test_fn:ident),* $(,)*) => {
+        $(
+            #[test]
+            fn $test_fn() {
+                $setup;
+                let adapter = $constructor;
+                $crate::testing::$test_fn(adapter);
+            }
+        )*
     }
 }
 
