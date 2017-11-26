@@ -1,6 +1,6 @@
 [package]
 name = "schemer"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Andrew Champion <andrew.champion@gmail.com>"]
 description = "A database schema migration library with DAG dependencies"
 readme = "../README.md"
