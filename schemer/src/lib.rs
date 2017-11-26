@@ -2,9 +2,9 @@
 //! (DAG) dependencies between migrations.
 //!
 //! To use with a specific database, an adapter is required. Known adapter
-//! creates:
+//! crates:
 //!
-//! - PostgreSQL: `schemer_postgres`
+//! - PostgreSQL: [`schemer-postgres`](https://crates.io/crates/schemer-postgres)
 #![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
 
 extern crate daggy;
@@ -37,7 +37,7 @@ pub trait Migration {
     /// Set of IDs of all direct dependencies of this migration.
     fn dependencies(&self) -> HashSet<Uuid>;
 
-    /// User-targetted description of this migration.
+    /// User-targeted description of this migration.
     fn description(&self) -> &'static str;
 }
 
