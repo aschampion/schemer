@@ -5,6 +5,7 @@
 //!
 //! ```rust
 //! extern crate postgres;
+//! #[macro_use]
 //! extern crate schemer;
 //! extern crate schemer_postgres;
 //! extern crate uuid;
@@ -17,21 +18,12 @@
 //! use schemer_postgres::{PostgresAdapter, PostgresAdapterError, PostgresMigration};
 //! use uuid::Uuid;
 //!
-//! struct MyExampleMigration {}
-//!
-//! impl Migration for MyExampleMigration {
-//!     fn id(&self) -> Uuid {
-//!         Uuid::parse_str("4885e8ab-dafa-4d76-a565-2dee8b04ef60").unwrap()
-//!     }
-//!
-//!     fn dependencies(&self) -> HashSet<Uuid> {
-//!         HashSet::new()
-//!     }
-//!
-//!     fn description(&self) -> &'static str {
-//!         "An example migration without dependencies."
-//!     }
-//! }
+//! struct MyExampleMigration;
+//! migration!(
+//!     MyExampleMigration,
+//!     "4885e8ab-dafa-4d76-a565-2dee8b04ef60",
+//!     [],
+//!     "An example migration without dependencies.");
 //!
 //! impl PostgresMigration for MyExampleMigration {
 //!     fn up(&self, transaction: &Transaction) -> Result<(), PostgresAdapterError> {

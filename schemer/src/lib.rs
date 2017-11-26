@@ -41,6 +41,61 @@ pub trait Migration {
     fn description(&self) -> &'static str;
 }
 
+/// Create a trivial implementation of `Migration` for a type.
+///
+/// ## Example
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate schemer;
+/// extern crate uuid;
+///
+/// use schemer::Migration;
+///
+/// struct ParentMigration;
+/// migration!(
+///     ParentMigration,
+///     "bc960dc8-0e4a-4182-a62a-8e776d1e2b30",
+///     [],
+///     "Parent migration in a DAG");
+///
+/// struct ChildMigration;
+/// migration!(
+///     ChildMigration,
+///     "4885e8ab-dafa-4d76-a565-2dee8b04ef60",
+///     ["bc960dc8-0e4a-4182-a62a-8e776d1e2b30",],
+///     "Child migration in a DAG");
+///
+/// fn main() {
+///     let parent = ParentMigration;
+///     let child = ChildMigration;
+///
+///     assert!(child.dependencies().contains(&parent.id()));
+/// }
+/// ```
+#[macro_export]
+macro_rules! migration {
+    ($name:ident, $id:expr, [ $( $dependency_id:expr ),* $(,)* ], $description:expr) => {
+        impl $crate::Migration for $name {
+            fn id(&self) -> uuid::Uuid {
+                uuid::Uuid::parse_str($id).unwrap()
+            }
+
+            fn dependencies(&self) -> std::collections::HashSet<uuid::Uuid> {
+                vec![
+                    $(
+                        uuid::Uuid::parse_str($dependency_id).unwrap(),
+                    )*
+                ].into_iter().collect()
+            }
+
+            fn description(&self) -> &'static str {
+                $description
+            }
+        }
+    }
+}
+
 /// Direction in which a migration is applied (`Up`) or reverted (`Down`).
 #[derive(Debug)]
 pub enum MigrationDirection {
