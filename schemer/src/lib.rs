@@ -77,14 +77,14 @@ pub trait Migration {
 macro_rules! migration {
     ($name:ident, $id:expr, [ $( $dependency_id:expr ),* $(,)* ], $description:expr) => {
         impl $crate::Migration for $name {
-            fn id(&self) -> uuid::Uuid {
-                uuid::Uuid::parse_str($id).unwrap()
+            fn id(&self) -> ::uuid::Uuid {
+                ::uuid::Uuid::parse_str($id).unwrap()
             }
 
-            fn dependencies(&self) -> std::collections::HashSet<uuid::Uuid> {
+            fn dependencies(&self) -> ::std::collections::HashSet<::uuid::Uuid> {
                 vec![
                     $(
-                        uuid::Uuid::parse_str($dependency_id).unwrap(),
+                        ::uuid::Uuid::parse_str($dependency_id).unwrap(),
                     )*
                 ].into_iter().collect()
             }
