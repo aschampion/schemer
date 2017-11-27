@@ -1,0 +1,19 @@
+[package]
+name = "schemer-rusqlite"
+version = "0.1.0"
+authors = ["Andrew Champion <andrew.champion@gmail.com>"]
+description = "SQLite3 adapter for the Schemer database schema migration library "
+readme = "../README.md"
+keywords = ["database", "migration", "sqlite", "sql"]
+categories = ["database"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/aschampion/schemer"
+
+[badges]
+travis-ci = { repository = "aschampion/schemer", branch = "master" }
+
+[dependencies]
+uuid = { version = "~0.5", features = ["use_std"] }
+rusqlite = "0.13"
+
+schemer = { version = "0.1.1", path = "../schemer" }

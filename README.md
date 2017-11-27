@@ -2,7 +2,8 @@
 
 Schemer is a database schema migration library for Rust that supports directed acyclic graph (DAG) dependencies between migrations. It currently has adapters for the following databases:
 
-- PostgreSQL: schemer-postgres
+- PostgreSQL: [schemer-postgres](https://crates.io/crates/schemer-postgres)
+- SQLite: [schemer-rusqlite](https://crates.io/crates/schemer-rusqlite)
 
 Other Rust schema migration libraries to consider if you do not require DAG migration dependencies:
 

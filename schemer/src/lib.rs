@@ -5,6 +5,7 @@
 //! crates:
 //!
 //! - PostgreSQL: [`schemer-postgres`](https://crates.io/crates/schemer-postgres)
+//! - SQLite: [`schemer-rusqlite`](https://crates.io/crates/schemer-rusqlite)
 #![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
 
 extern crate daggy;
