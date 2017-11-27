@@ -127,9 +127,8 @@ pub fn test_migration_chain<A: TestAdapter>(adapter: A) {
 
     let mut migrator = Migrator::new(adapter);
 
-    migrator.register(migration1).expect("Migration 1 registration failed");
-    migrator.register(migration2).expect("Migration 2 registration failed");
-    migrator.register(migration3).expect("Migration 3 registration failed");
+    migrator.register_multiple(vec![migration1, migration2, migration3])
+            .expect("Migration registration failed");
 
     migrator.up(Some(uuid2)).expect("Up migration failed");
 
@@ -176,10 +175,8 @@ pub fn test_multi_component_dag<A: TestAdapter>(adapter: A) {
 
     let mut migrator = Migrator::new(adapter);
 
-    migrator.register(migration1).expect("Migration 1 registration failed");
-    migrator.register(migration2).expect("Migration 2 registration failed");
-    migrator.register(migration3).expect("Migration 3 registration failed");
-    migrator.register(migration4).expect("Migration 4 registration failed");
+    migrator.register_multiple(vec![migration1, migration2, migration3, migration4])
+            .expect("Migration registration failed");
 
     migrator.up(Some(uuid2)).expect("Up migration failed");
 
@@ -263,11 +260,9 @@ pub fn test_branching_dag<A: TestAdapter>(adapter: A) {
 
     let mut migrator = Migrator::new(adapter);
 
-    migrator.register(migration1).expect("Migration 1 registration failed");
-    migrator.register(migration2).expect("Migration 2 registration failed");
-    migrator.register(migration3).expect("Migration 3 registration failed");
-    migrator.register(migration4).expect("Migration 4 registration failed");
-    migrator.register(migration5).expect("Migration 5 registration failed");
+
+    migrator.register_multiple(vec![migration1, migration2, migration3, migration4, migration5])
+            .expect("Migration registration failed");
 
     migrator.up(Some(uuid4)).expect("Up migration failed");
 

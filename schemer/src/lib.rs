@@ -207,6 +207,36 @@ impl<T: Adapter> Migrator<T> {
         Ok(())
     }
 
+    /// Register multiple migrations into the dependency graph. The `Vec` does
+    /// not need to be order by dependency structure.
+    pub fn register_multiple(
+        &mut self,
+        migrations: Vec<Box<T::MigrationType>>
+    )  -> Result<(), MigratorError<T::Error>> {
+        for migration in migrations {
+            let id = migration.id();
+            if self.id_map.contains_key(&id) {
+                return Err(MigratorError::Dependency(DependencyError::DuplicateId(id)))
+            }
+            let migration_idx = self.dependencies.add_node(migration);
+            self.id_map.insert(id, migration_idx);
+        }
+
+        for (id, migration_idx) in &self.id_map {
+            let depends = self.dependencies.node_weight(*migration_idx)
+                                             .expect("Impossible: indices from this graph")
+                                             .dependencies();
+            for d in depends {
+                let parent_idx = self.id_map.get(&d)
+                    .ok_or_else(|| MigratorError::Dependency(DependencyError::UnknownId(d)))?;
+                self.dependencies.add_edge(*parent_idx, *migration_idx, ())
+                    .or_else(|_| Err(MigratorError::Dependency(DependencyError::Cycle {from: d, to: *id})))?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Collect the ids of recursively dependent migrations in `dir` induced
     /// starting from `id`. If `dir` is `Incoming`, this is all ancestors
     /// (dependencies); if `Outgoing`, this is all descendents (dependents).
