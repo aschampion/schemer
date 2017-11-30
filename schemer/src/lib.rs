@@ -224,9 +224,7 @@ impl<T: Adapter> Migrator<T> {
         }
 
         for (id, migration_idx) in &self.id_map {
-            let depends = self.dependencies.node_weight(*migration_idx)
-                                             .expect("Impossible: indices from this graph")
-                                             .dependencies();
+            let depends = self.dependencies[*migration_idx].dependencies();
             for d in depends {
                 let parent_idx = self.id_map.get(&d)
                     .ok_or_else(|| MigratorError::Dependency(DependencyError::UnknownId(d)))?;
@@ -259,9 +257,7 @@ impl<T: Adapter> Migrator<T> {
                         .graph()
                         .externals(dir.opposite())
                         .map(|idx| {
-                            self.dependencies.node_weight(idx)
-                                             .expect("Impossible: indices from this graph")
-                                             .id()
+                            self.dependencies[idx].id()
                         }),
                 )
             }
@@ -274,9 +270,7 @@ impl<T: Adapter> Migrator<T> {
             .collect();
         while !to_visit.is_empty() {
             let idx = to_visit.pop_front().expect("Impossible: not empty");
-            let id = self.dependencies.node_weight(idx)
-                                      .expect("Impossible: indices from this graph")
-                                      .id();
+            let id = self.dependencies[idx].id();
             target_ids.insert(id);
             to_visit.extend(
                 self.dependencies
@@ -302,8 +296,7 @@ impl<T: Adapter> Migrator<T> {
         for idx in &daggy::petgraph::algo::toposort(self.dependencies.graph(), None)
             .expect("Impossible: dependencies are a DAG")
         {
-            let migration = self.dependencies.node_weight(*idx)
-                                             .expect("Impossible: indices from this graph");
+            let migration = &self.dependencies[*idx];
             let id = migration.id();
             if applied_migrations.contains(&id) || !target_ids.contains(&id) {
                 continue;
@@ -339,8 +332,7 @@ impl<T: Adapter> Migrator<T> {
             .iter()
             .rev()
         {
-            let migration = self.dependencies.node_weight(*idx)
-                                             .expect("Impossible: indices from this graph");
+            let migration = &self.dependencies[*idx];
             let id = migration.id();
             if !applied_migrations.contains(&id) || !target_ids.contains(&id) {
                 continue;
