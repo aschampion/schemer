@@ -12,6 +12,8 @@ extern crate daggy;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+#[macro_use]
+extern crate log;
 extern crate uuid;
 
 
@@ -190,6 +192,7 @@ impl<T: Adapter> Migrator<T> {
     /// Register a migration into the dependency graph.
     pub fn register(&mut self, migration: Box<T::MigrationType>) -> Result<(), MigratorError<T::Error>> {
         let id = migration.id();
+        debug!("Registering migration {}", id);
         if self.id_map.contains_key(&id) {
             return Err(MigratorError::Dependency(DependencyError::DuplicateId(id)))
         }
@@ -216,6 +219,7 @@ impl<T: Adapter> Migrator<T> {
     )  -> Result<(), MigratorError<T::Error>> {
         for migration in migrations {
             let id = migration.id();
+            debug!("Registering migration (with multiple) {}", id);
             if self.id_map.contains_key(&id) {
                 return Err(MigratorError::Dependency(DependencyError::DuplicateId(id)))
             }
@@ -287,6 +291,7 @@ impl<T: Adapter> Migrator<T> {
     ///
     /// If `to` is `None`, apply all registered migrations.
     pub fn up(&mut self, to: Option<Uuid>) -> Result<(), MigratorError<T::Error>> {
+        info!("Migrating up to target: {:?}", to);
         let target_ids = self.induced_stream(to, EdgeDirection::Incoming)
                              .map_err(MigratorError::Dependency)?;
 
@@ -302,6 +307,7 @@ impl<T: Adapter> Migrator<T> {
                 continue;
             }
 
+            info!("Applying migration {}", id);
             self.adapter.apply_migration(migration)
                         .map_err(|e| MigratorError::Migration {
                             id: id,
@@ -320,6 +326,7 @@ impl<T: Adapter> Migrator<T> {
     ///
     /// If `to` is `None`, revert all applied migrations.
     pub fn down(&mut self, to: Option<Uuid>) -> Result<(), MigratorError<T::Error>> {
+        info!("Migrating down to target: {:?}", to);
         let mut target_ids = self.induced_stream(to, EdgeDirection::Outgoing)
                                  .map_err(MigratorError::Dependency)?;
         if let Some(sink_id) = to {
@@ -338,6 +345,7 @@ impl<T: Adapter> Migrator<T> {
                 continue;
             }
 
+            info!("Reverting migration {}", id);
             self.adapter.revert_migration(migration)
                         .map_err(|e| MigratorError::Migration {
                             id: id,
