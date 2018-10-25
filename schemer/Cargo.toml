@@ -1,7 +1,11 @@
 [package]
 name = "schemer"
 version = "0.1.2"
-authors = ["Andrew Champion <andrew.champion@gmail.com>"]
+authors = [
+    "Andrew Champion <andrew.champion@gmail.com>",
+    "Tom Kazimiers <tom@voodoo-arts.net",
+    "Chris Barnes <barnesc@janelia.hhmi.org",
+]
 description = "A database schema migration library with DAG dependencies"
 readme = "../README.md"
 keywords = ["database", "migration", "sql"]
