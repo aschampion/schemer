@@ -1,6 +1,6 @@
 [package]
 name = "schemer-rusqlite"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Andrew Champion <andrew.champion@gmail.com>"]
 description = "SQLite3 adapter for the Schemer database schema migration library "
 readme = "../README.md"
