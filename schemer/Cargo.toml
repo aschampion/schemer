@@ -18,7 +18,6 @@ travis-ci = { repository = "aschampion/schemer", branch = "master" }
 
 [dependencies]
 daggy = "~0.5"
-failure = "~0.1"
-failure_derive = "~0.1"
 log = "0.4"
+thiserror = "1.0"
 uuid = { version = "~0.5", features = ["use_std"] }

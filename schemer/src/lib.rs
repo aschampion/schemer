@@ -9,11 +9,9 @@
 #![warn(clippy::all)]
 
 extern crate daggy;
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
 #[macro_use]
 extern crate log;
+extern crate thiserror;
 extern crate uuid;
 
 
@@ -22,8 +20,8 @@ use std::fmt::{Debug, Display};
 
 use daggy::Dag;
 use daggy::petgraph::EdgeDirection;
-use failure::Fail;
 use uuid::Uuid;
+use thiserror::Error;
 
 
 #[macro_use]
@@ -123,7 +121,7 @@ pub trait Adapter {
     type MigrationType: Migration + ?Sized;
 
     /// Type of errors returned by this adapter.
-    type Error: Debug + Fail;
+    type Error: std::error::Error + 'static;
 
     /// Returns the set of IDs for migrations that have been applied.
     fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error>;
@@ -136,13 +134,13 @@ pub trait Adapter {
 }
 
 /// Error resulting from the definition of migration identity and dependency.
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum DependencyError {
-    #[fail(display = "Duplicate migration ID {}", _0)]
+    #[error("Duplicate migration ID {0}")]
     DuplicateId(Uuid),
-    #[fail(display = "Unknown migration ID {}", _0)]
+    #[error("Unknown migration ID {0}")]
     UnknownId(Uuid),
-    #[fail(display = "Cyclic dependency cased by edge from migration IDs {} to {}", from, to)]
+    #[error("Cyclic dependency cased by edge from migration IDs {from} to {to}")]
     Cycle {
         from: Uuid,
         to: Uuid,
@@ -151,25 +149,19 @@ pub enum DependencyError {
 
 /// Error resulting either from migration definitions or from migration
 /// application with an adapter.
-#[derive(Debug, Fail)]
-pub enum MigratorError<T: Debug + Fail> {
-    #[fail(display = "An error occurred due to migration dependencies")]
-    Dependency(#[cause] DependencyError),
-    #[fail(display = "An error occurred while interacting with the adapter.")]
-    Adapter(#[cause] T),
-    #[fail(display = "An error occurred while applying migration {} ({}) {}: {}.", id, description, direction, error)]
+#[derive(Debug, Error)]
+pub enum MigratorError<T: std::error::Error + 'static> {
+    #[error("An error occurred due to migration dependencies")]
+    Dependency(#[source] DependencyError),
+    #[error("An error occurred while interacting with the adapter.")]
+    Adapter(#[from] T),
+    #[error("An error occurred while applying migration {id} ({description}) {direction}: {error}.")]
     Migration {
         id: Uuid,
         description: &'static str,
         direction: MigrationDirection,
-        #[cause] error: T,
+        #[source] error: T,
     },
-}
-
-impl<T: Debug + Fail> From<T> for MigratorError<T> {
-    fn from(error: T) -> MigratorError<T> {
-        MigratorError::Adapter(error)
-    }
 }
 
 /// Primary schemer type for defining and applying migrations.
@@ -373,8 +365,8 @@ pub mod tests {
         }
     }
 
-    #[derive(Debug, Fail)]
-    #[fail(display = "An error occurred.")]
+    #[derive(Debug, Error)]
+    #[error("An error occurred.")]
     struct DefaultTestAdapterError;
 
     impl Adapter for DefaultTestAdapter {
