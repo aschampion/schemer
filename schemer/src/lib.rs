@@ -127,10 +127,10 @@ pub trait Adapter {
     fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error>;
 
     /// Apply a single migration.
-    fn apply_migration(&mut self, &Self::MigrationType) -> Result<(), Self::Error>;
+    fn apply_migration(&mut self, _: &Self::MigrationType) -> Result<(), Self::Error>;
 
     /// Revert a single migration.
-    fn revert_migration(&mut self, &Self::MigrationType) -> Result<(), Self::Error>;
+    fn revert_migration(&mut self, _: &Self::MigrationType) -> Result<(), Self::Error>;
 }
 
 /// Error resulting from the definition of migration identity and dependency.
