@@ -91,18 +91,24 @@ pub fn test_single_migration<A: TestAdapter>(adapter: A) {
 
     let mut migrator: Migrator<A> = Migrator::new(adapter);
 
-    migrator.register(migration1).expect("Migration 1 registration failed");
+    migrator
+        .register(migration1)
+        .expect("Migration 1 registration failed");
     migrator.up(None).expect("Up migration failed");
 
-    assert!(migrator.adapter.applied_migrations().unwrap().contains(
-        &uuid1,
-    ));
+    assert!(migrator
+        .adapter
+        .applied_migrations()
+        .unwrap()
+        .contains(&uuid1,));
 
     migrator.down(None).expect("Down migration failed");
 
-    assert!(!migrator.adapter.applied_migrations().unwrap().contains(
-        &uuid1,
-    ));
+    assert!(!migrator
+        .adapter
+        .applied_migrations()
+        .unwrap()
+        .contains(&uuid1,));
 }
 
 /// Test the partial application and reversion of a chain of three dependent
@@ -127,8 +133,9 @@ pub fn test_migration_chain<A: TestAdapter>(adapter: A) {
 
     let mut migrator = Migrator::new(adapter);
 
-    migrator.register_multiple(vec![migration1, migration2, migration3])
-            .expect("Migration registration failed");
+    migrator
+        .register_multiple(vec![migration1, migration2, migration3])
+        .expect("Migration registration failed");
 
     migrator.up(Some(uuid2)).expect("Up migration failed");
 
@@ -175,8 +182,9 @@ pub fn test_multi_component_dag<A: TestAdapter>(adapter: A) {
 
     let mut migrator = Migrator::new(adapter);
 
-    migrator.register_multiple(vec![migration1, migration2, migration3, migration4])
-            .expect("Migration registration failed");
+    migrator
+        .register_multiple(vec![migration1, migration2, migration3, migration4])
+        .expect("Migration registration failed");
 
     migrator.up(Some(uuid2)).expect("Up migration failed");
 
@@ -260,9 +268,11 @@ pub fn test_branching_dag<A: TestAdapter>(adapter: A) {
 
     let mut migrator = Migrator::new(adapter);
 
-
-    migrator.register_multiple(vec![migration1, migration2, migration3, migration4, migration5])
-            .expect("Migration registration failed");
+    migrator
+        .register_multiple(vec![
+            migration1, migration2, migration3, migration4, migration5,
+        ])
+        .expect("Migration registration failed");
 
     migrator.up(Some(uuid4)).expect("Up migration failed");
 

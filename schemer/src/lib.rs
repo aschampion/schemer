@@ -11,16 +11,14 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{Debug, Display};
 
-use daggy::Dag;
 use daggy::petgraph::EdgeDirection;
+use daggy::Dag;
 use log::{debug, info, log};
-use uuid::Uuid;
 use thiserror::Error;
-
+use uuid::Uuid;
 
 #[macro_use]
 pub mod testing;
-
 
 /// Metadata for defining the identity and dependence relations of migrations.
 /// Specific adapters require additional traits for actual application and
@@ -135,10 +133,7 @@ pub enum DependencyError {
     #[error("Unknown migration ID {0}")]
     UnknownId(Uuid),
     #[error("Cyclic dependency cased by edge from migration IDs {from} to {to}")]
-    Cycle {
-        from: Uuid,
-        to: Uuid,
-    }
+    Cycle { from: Uuid, to: Uuid },
 }
 
 /// Error resulting either from migration definitions or from migration
@@ -149,12 +144,15 @@ pub enum MigratorError<T: std::error::Error + 'static> {
     Dependency(#[source] DependencyError),
     #[error("An error occurred while interacting with the adapter.")]
     Adapter(#[from] T),
-    #[error("An error occurred while applying migration {id} ({description}) {direction}: {error}.")]
+    #[error(
+        "An error occurred while applying migration {id} ({description}) {direction}: {error}."
+    )]
     Migration {
         id: Uuid,
         description: &'static str,
         direction: MigrationDirection,
-        #[source] error: T,
+        #[source]
+        error: T,
     },
 }
 
@@ -176,20 +174,31 @@ impl<T: Adapter> Migrator<T> {
     }
 
     /// Register a migration into the dependency graph.
-    pub fn register(&mut self, migration: Box<T::MigrationType>) -> Result<(), MigratorError<T::Error>> {
+    pub fn register(
+        &mut self,
+        migration: Box<T::MigrationType>,
+    ) -> Result<(), MigratorError<T::Error>> {
         let id = migration.id();
         debug!("Registering migration {}", id);
         if self.id_map.contains_key(&id) {
-            return Err(MigratorError::Dependency(DependencyError::DuplicateId(id)))
+            return Err(MigratorError::Dependency(DependencyError::DuplicateId(id)));
         }
         let depends = migration.dependencies();
         let migration_idx = self.dependencies.add_node(migration);
 
         for d in depends {
-            let parent_idx = self.id_map.get(&d)
+            let parent_idx = self
+                .id_map
+                .get(&d)
                 .ok_or_else(|| MigratorError::Dependency(DependencyError::UnknownId(d)))?;
-            self.dependencies.add_edge(*parent_idx, migration_idx, ())
-                .or_else(|_| Err(MigratorError::Dependency(DependencyError::Cycle {from: d, to: id})))?;
+            self.dependencies
+                .add_edge(*parent_idx, migration_idx, ())
+                .or_else(|_| {
+                    Err(MigratorError::Dependency(DependencyError::Cycle {
+                        from: d,
+                        to: id,
+                    }))
+                })?;
         }
 
         self.id_map.insert(id, migration_idx);
@@ -201,13 +210,13 @@ impl<T: Adapter> Migrator<T> {
     /// not need to be order by dependency structure.
     pub fn register_multiple(
         &mut self,
-        migrations: Vec<Box<T::MigrationType>>
-    )  -> Result<(), MigratorError<T::Error>> {
+        migrations: Vec<Box<T::MigrationType>>,
+    ) -> Result<(), MigratorError<T::Error>> {
         for migration in migrations {
             let id = migration.id();
             debug!("Registering migration (with multiple) {}", id);
             if self.id_map.contains_key(&id) {
-                return Err(MigratorError::Dependency(DependencyError::DuplicateId(id)))
+                return Err(MigratorError::Dependency(DependencyError::DuplicateId(id)));
             }
             let migration_idx = self.dependencies.add_node(migration);
             self.id_map.insert(id, migration_idx);
@@ -216,10 +225,18 @@ impl<T: Adapter> Migrator<T> {
         for (id, migration_idx) in &self.id_map {
             let depends = self.dependencies[*migration_idx].dependencies();
             for d in depends {
-                let parent_idx = self.id_map.get(&d)
+                let parent_idx = self
+                    .id_map
+                    .get(&d)
                     .ok_or_else(|| MigratorError::Dependency(DependencyError::UnknownId(d)))?;
-                self.dependencies.add_edge(*parent_idx, *migration_idx, ())
-                    .or_else(|_| Err(MigratorError::Dependency(DependencyError::Cycle {from: d, to: *id})))?;
+                self.dependencies
+                    .add_edge(*parent_idx, *migration_idx, ())
+                    .or_else(|_| {
+                        Err(MigratorError::Dependency(DependencyError::Cycle {
+                            from: d,
+                            to: *id,
+                        }))
+                    })?;
             }
         }
 
@@ -231,26 +248,26 @@ impl<T: Adapter> Migrator<T> {
     /// (dependencies); if `Outgoing`, this is all descendents (dependents).
     /// If `id` is `None`, this is all migrations starting from the sources or
     /// the sinks, respectively.
-    fn induced_stream(&self, id: Option<Uuid>, dir: EdgeDirection) -> Result<HashSet<Uuid>, DependencyError> {
+    fn induced_stream(
+        &self,
+        id: Option<Uuid>,
+        dir: EdgeDirection,
+    ) -> Result<HashSet<Uuid>, DependencyError> {
         let mut target_ids = HashSet::new();
         match id {
             Some(id) => {
                 if !self.id_map.contains_key(&id) {
-                    return Err(DependencyError::UnknownId(id))
+                    return Err(DependencyError::UnknownId(id));
                 }
                 target_ids.insert(id);
             }
             // This will eventually yield all migrations, so could be optimized.
-            None => {
-                target_ids.extend(
-                    self.dependencies
-                        .graph()
-                        .externals(dir.opposite())
-                        .map(|idx| {
-                            self.dependencies[idx].id()
-                        }),
-                )
-            }
+            None => target_ids.extend(
+                self.dependencies
+                    .graph()
+                    .externals(dir.opposite())
+                    .map(|idx| self.dependencies[idx].id()),
+            ),
         }
 
         let mut to_visit: VecDeque<_> = target_ids
@@ -261,11 +278,7 @@ impl<T: Adapter> Migrator<T> {
             let idx = to_visit.pop_front().expect("Impossible: not empty");
             let id = self.dependencies[idx].id();
             target_ids.insert(id);
-            to_visit.extend(
-                self.dependencies
-                    .graph()
-                    .neighbors_directed(idx, dir),
-            );
+            to_visit.extend(self.dependencies.graph().neighbors_directed(idx, dir));
         }
 
         Ok(target_ids)
@@ -277,8 +290,9 @@ impl<T: Adapter> Migrator<T> {
     /// If `to` is `None`, apply all registered migrations.
     pub fn up(&mut self, to: Option<Uuid>) -> Result<(), MigratorError<T::Error>> {
         info!("Migrating up to target: {:?}", to);
-        let target_ids = self.induced_stream(to, EdgeDirection::Incoming)
-                             .map_err(MigratorError::Dependency)?;
+        let target_ids = self
+            .induced_stream(to, EdgeDirection::Incoming)
+            .map_err(MigratorError::Dependency)?;
 
         // TODO: This is assuming the applied_migrations state is consistent
         // with the dependency graph.
@@ -293,13 +307,14 @@ impl<T: Adapter> Migrator<T> {
             }
 
             info!("Applying migration {}", id);
-            self.adapter.apply_migration(migration)
-                        .map_err(|e| MigratorError::Migration {
-                            id,
-                            description: migration.description(),
-                            direction: MigrationDirection::Up,
-                            error: e
-                        })?;
+            self.adapter
+                .apply_migration(migration)
+                .map_err(|e| MigratorError::Migration {
+                    id,
+                    description: migration.description(),
+                    direction: MigrationDirection::Up,
+                    error: e,
+                })?;
         }
 
         Ok(())
@@ -312,8 +327,9 @@ impl<T: Adapter> Migrator<T> {
     /// If `to` is `None`, revert all applied migrations.
     pub fn down(&mut self, to: Option<Uuid>) -> Result<(), MigratorError<T::Error>> {
         info!("Migrating down to target: {:?}", to);
-        let mut target_ids = self.induced_stream(to, EdgeDirection::Outgoing)
-                                 .map_err(MigratorError::Dependency)?;
+        let mut target_ids = self
+            .induced_stream(to, EdgeDirection::Outgoing)
+            .map_err(MigratorError::Dependency)?;
         if let Some(sink_id) = to {
             target_ids.remove(&sink_id);
         }
@@ -331,13 +347,14 @@ impl<T: Adapter> Migrator<T> {
             }
 
             info!("Reverting migration {}", id);
-            self.adapter.revert_migration(migration)
-                        .map_err(|e| MigratorError::Migration {
-                            id,
-                            description: migration.description(),
-                            direction: MigrationDirection::Down,
-                            error: e
-                        })?;
+            self.adapter
+                .revert_migration(migration)
+                .map_err(|e| MigratorError::Migration {
+                    id,
+                    description: migration.description(),
+                    direction: MigrationDirection::Down,
+                    error: e,
+                })?;
         }
 
         Ok(())
@@ -346,8 +363,8 @@ impl<T: Adapter> Migrator<T> {
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
     use super::testing::*;
+    use super::*;
 
     struct DefaultTestAdapter {
         applied_migrations: HashSet<Uuid>,
@@ -355,7 +372,9 @@ pub mod tests {
 
     impl DefaultTestAdapter {
         fn new() -> DefaultTestAdapter {
-            DefaultTestAdapter { applied_migrations: HashSet::new() }
+            DefaultTestAdapter {
+                applied_migrations: HashSet::new(),
+            }
         }
     }
 

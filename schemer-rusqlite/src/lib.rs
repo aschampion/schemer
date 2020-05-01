@@ -49,14 +49,12 @@
 //! ```
 #![warn(clippy::all)]
 
-
 use std::collections::HashSet;
 
 use rusqlite::{Connection, Error as RusqliteError, Transaction};
 use uuid::Uuid;
 
 use schemer::{Adapter, Migration};
-
 
 /// SQlite-specific trait for schema migrations.
 pub trait RusqliteMigration: Migration {
@@ -77,8 +75,9 @@ struct WrappedUuid(Uuid);
 
 impl rusqlite::types::FromSql for WrappedUuid {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(WrappedUuid(Uuid::from_bytes(value.as_blob()?)
-            .map_err(|e| rusqlite::types::FromSqlError::Other(Box::new(e)))?))
+        Ok(WrappedUuid(Uuid::from_bytes(value.as_blob()?).map_err(
+            |e| rusqlite::types::FromSqlError::Other(Box::new(e)),
+        )?))
     }
 }
 
@@ -104,10 +103,7 @@ impl<'a> RusqliteAdapter<'a> {
     /// let adapter = schemer_rusqlite::RusqliteAdapter::new(&mut conn, None);
     /// # }
     /// ```
-    pub fn new(
-        conn: &'a mut Connection,
-        table_name: Option<String>,
-    ) -> RusqliteAdapter<'a> {
+    pub fn new(conn: &'a mut Connection, table_name: Option<String>) -> RusqliteAdapter<'a> {
         RusqliteAdapter {
             conn,
             migration_metadata_table: table_name.unwrap_or_else(|| "_schemer".into()),
@@ -138,11 +134,10 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
     type Error = RusqliteAdapterError;
 
     fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
-        let mut stmt = self.conn.prepare(
-            &format!(
-                "SELECT id FROM {};",
-                self.migration_metadata_table
-            ))?;
+        let mut stmt = self.conn.prepare(&format!(
+            "SELECT id FROM {};",
+            self.migration_metadata_table
+        ))?;
         // TODO: have to do this rather than `collect` because Rusqlite has an
         // interface that goes against map conventions.
         let rows = stmt.query_map(&[], |row| row.get::<_, WrappedUuid>(0).0)?;
@@ -184,7 +179,6 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -199,7 +193,7 @@ mod tests {
         }
     }
 
-    fn build_test_connection () -> Connection {
+    fn build_test_connection() -> Connection {
         Connection::open_in_memory().unwrap()
     }
 

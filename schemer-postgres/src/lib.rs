@@ -52,15 +52,13 @@
 //! ```
 #![warn(clippy::all)]
 
-
 use std::collections::HashSet;
 
-use postgres::{Connection, Error as PostgresError};
 use postgres::transaction::Transaction;
+use postgres::{Connection, Error as PostgresError};
 use uuid::Uuid;
 
 use schemer::{Adapter, Migration};
-
 
 /// PostgreSQL-specific trait for schema migrations.
 pub trait PostgresMigration: Migration {
@@ -101,10 +99,7 @@ impl<'a> PostgresAdapter<'a> {
     /// let adapter = schemer_postgres::PostgresAdapter::new(&conn, None);
     /// # }
     /// ```
-    pub fn new(
-        conn: &'a Connection,
-        table_name: Option<String>,
-    ) -> PostgresAdapter<'a> {
+    pub fn new(conn: &'a Connection, table_name: Option<String>) -> PostgresAdapter<'a> {
         PostgresAdapter {
             conn,
             migration_metadata_table: table_name.unwrap_or_else(|| "_schemer".into()),
@@ -138,10 +133,7 @@ impl<'a> Adapter for PostgresAdapter<'a> {
 
     fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
         let rows = self.conn.query(
-            &format!(
-                "SELECT id FROM {};",
-                self.migration_metadata_table
-            ),
+            &format!("SELECT id FROM {};", self.migration_metadata_table),
             &[],
         )?;
         Ok(rows.iter().map(|row| row.get(0)).collect())
@@ -174,7 +166,6 @@ impl<'a> Adapter for PostgresAdapter<'a> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,9 +181,12 @@ mod tests {
         }
     }
 
-    fn build_test_connection () -> Connection {
-        Connection::connect("postgresql://postgres@localhost/?search_path=pg_temp", TlsMode::None)
-            .unwrap()
+    fn build_test_connection() -> Connection {
+        Connection::connect(
+            "postgresql://postgres@localhost/?search_path=pg_temp",
+            TlsMode::None,
+        )
+        .unwrap()
     }
 
     fn build_test_adapter(conn: &Connection) -> PostgresAdapter<'_> {
