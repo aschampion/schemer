@@ -1,6 +1,7 @@
 [package]
 name = "schemer"
 version = "0.1.2"
+edition = "2018"
 authors = [
     "Andrew Champion <andrew.champion@gmail.com>",
     "Tom Kazimiers <tom@voodoo-arts.net",

@@ -8,18 +8,12 @@
 //! - SQLite: [`schemer-rusqlite`](https://crates.io/crates/schemer-rusqlite)
 #![warn(clippy::all)]
 
-extern crate daggy;
-#[macro_use]
-extern crate log;
-extern crate thiserror;
-extern crate uuid;
-
-
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{Debug, Display};
 
 use daggy::Dag;
 use daggy::petgraph::EdgeDirection;
+use log::{debug, info, log};
 use uuid::Uuid;
 use thiserror::Error;
 
@@ -105,7 +99,7 @@ pub enum MigrationDirection {
 }
 
 impl Display for MigrationDirection {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let printable = match *self {
             MigrationDirection::Up => "up",
             MigrationDirection::Down => "Down",
