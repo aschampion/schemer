@@ -52,14 +52,6 @@
 //! ```
 #![warn(clippy::all)]
 
-extern crate postgres;
-#[cfg(test)]
-#[macro_use]
-extern crate schemer;
-#[cfg(not(test))]
-extern crate schemer;
-extern crate uuid;
-
 
 use std::collections::HashSet;
 
@@ -73,12 +65,12 @@ use schemer::{Adapter, Migration};
 /// PostgreSQL-specific trait for schema migrations.
 pub trait PostgresMigration: Migration {
     /// Apply a migration to the database using a transaction.
-    fn up(&self, _transaction: &Transaction) -> Result<(), PostgresError> {
+    fn up(&self, _transaction: &Transaction<'_>) -> Result<(), PostgresError> {
         Ok(())
     }
 
     /// Revert a migration to the database using a transaction.
-    fn down(&self, _transaction: &Transaction) -> Result<(), PostgresError> {
+    fn down(&self, _transaction: &Transaction<'_>) -> Result<(), PostgresError> {
         Ok(())
     }
 }
@@ -187,6 +179,7 @@ impl<'a> Adapter for PostgresAdapter<'a> {
 mod tests {
     use super::*;
     use postgres::TlsMode;
+    use schemer::test_schemer_adapter;
     use schemer::testing::*;
 
     impl PostgresMigration for TestMigration {}
@@ -202,7 +195,7 @@ mod tests {
             .unwrap()
     }
 
-    fn build_test_adapter(conn: &Connection) -> PostgresAdapter {
+    fn build_test_adapter(conn: &Connection) -> PostgresAdapter<'_> {
         let adapter = PostgresAdapter::new(conn, None);
         adapter.init().unwrap();
         adapter

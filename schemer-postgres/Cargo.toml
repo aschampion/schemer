@@ -1,6 +1,7 @@
 [package]
 name = "schemer-postgres"
 version = "0.1.1"
+edition = "2018"
 authors = ["Andrew Champion <andrew.champion@gmail.com>"]
 description = "PostgreSQL adapter for the Schemer database schema migration library"
 readme = "../README.md"
