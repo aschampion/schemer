@@ -49,14 +49,6 @@
 //! ```
 #![warn(clippy::all)]
 
-extern crate rusqlite;
-#[cfg(test)]
-#[macro_use]
-extern crate schemer;
-#[cfg(not(test))]
-extern crate schemer;
-extern crate uuid;
-
 
 use std::collections::HashSet;
 
@@ -69,12 +61,12 @@ use schemer::{Adapter, Migration};
 /// SQlite-specific trait for schema migrations.
 pub trait RusqliteMigration: Migration {
     /// Apply a migration to the database using a transaction.
-    fn up(&self, _transaction: &Transaction) -> Result<(), RusqliteError> {
+    fn up(&self, _transaction: &Transaction<'_>) -> Result<(), RusqliteError> {
         Ok(())
     }
 
     /// Revert a migration to the database using a transaction.
-    fn down(&self, _transaction: &Transaction) -> Result<(), RusqliteError> {
+    fn down(&self, _transaction: &Transaction<'_>) -> Result<(), RusqliteError> {
         Ok(())
     }
 }
@@ -84,7 +76,7 @@ pub type RusqliteAdapterError = RusqliteError;
 struct WrappedUuid(Uuid);
 
 impl rusqlite::types::FromSql for WrappedUuid {
-    fn column_result(value: rusqlite::types::ValueRef) -> rusqlite::types::FromSqlResult<Self> {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
         Ok(WrappedUuid(Uuid::from_bytes(value.as_blob()?)
             .map_err(|e| rusqlite::types::FromSqlError::Other(Box::new(e)))?))
     }
@@ -196,6 +188,7 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use schemer::test_schemer_adapter;
     use schemer::testing::*;
 
     impl RusqliteMigration for TestMigration {}
@@ -210,7 +203,7 @@ mod tests {
         Connection::open_in_memory().unwrap()
     }
 
-    fn build_test_adapter(conn: &mut Connection) -> RusqliteAdapter {
+    fn build_test_adapter(conn: &mut Connection) -> RusqliteAdapter<'_> {
         let adapter = RusqliteAdapter::new(conn, None);
         adapter.init().unwrap();
         adapter
