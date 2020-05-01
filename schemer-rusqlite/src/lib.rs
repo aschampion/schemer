@@ -47,7 +47,7 @@
 //!     migrator.up(None);
 //! }
 //! ```
-#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
+#![warn(clippy::all)]
 
 extern crate rusqlite;
 #[cfg(test)]
@@ -117,7 +117,7 @@ impl<'a> RusqliteAdapter<'a> {
         table_name: Option<String>,
     ) -> RusqliteAdapter<'a> {
         RusqliteAdapter {
-            conn: conn,
+            conn,
             migration_metadata_table: table_name.unwrap_or_else(|| "_schemer".into()),
         }
     }
@@ -141,7 +141,7 @@ impl<'a> RusqliteAdapter<'a> {
 }
 
 impl<'a> Adapter for RusqliteAdapter<'a> {
-    type MigrationType = RusqliteMigration;
+    type MigrationType = dyn RusqliteMigration;
 
     type Error = RusqliteAdapterError;
 

@@ -6,7 +6,7 @@
 //!
 //! - PostgreSQL: [`schemer-postgres`](https://crates.io/crates/schemer-postgres)
 //! - SQLite: [`schemer-rusqlite`](https://crates.io/crates/schemer-rusqlite)
-#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
+#![warn(clippy::all)]
 
 extern crate daggy;
 extern crate failure;
@@ -183,7 +183,7 @@ impl<T: Adapter> Migrator<T> {
     /// Create a `Migrator` using the given `Adapter`.
     pub fn new(adapter: T) -> Migrator<T> {
         Migrator {
-            adapter: adapter,
+            adapter,
             dependencies: Dag::new(),
             id_map: HashMap::new(),
         }
@@ -268,7 +268,6 @@ impl<T: Adapter> Migrator<T> {
         }
 
         let mut to_visit: VecDeque<_> = target_ids
-            .clone()
             .iter()
             .map(|id| *self.id_map.get(id).expect("ID map is malformed"))
             .collect();
@@ -310,7 +309,7 @@ impl<T: Adapter> Migrator<T> {
             info!("Applying migration {}", id);
             self.adapter.apply_migration(migration)
                         .map_err(|e| MigratorError::Migration {
-                            id: id,
+                            id,
                             description: migration.description(),
                             direction: MigrationDirection::Up,
                             error: e
@@ -348,7 +347,7 @@ impl<T: Adapter> Migrator<T> {
             info!("Reverting migration {}", id);
             self.adapter.revert_migration(migration)
                         .map_err(|e| MigratorError::Migration {
-                            id: id,
+                            id,
                             description: migration.description(),
                             direction: MigrationDirection::Down,
                             error: e
@@ -379,7 +378,7 @@ pub mod tests {
     struct DefaultTestAdapterError;
 
     impl Adapter for DefaultTestAdapter {
-        type MigrationType = Migration;
+        type MigrationType = dyn Migration;
 
         type Error = DefaultTestAdapterError;
 

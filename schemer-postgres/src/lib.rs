@@ -50,7 +50,7 @@
 //!     migrator.up(None);
 //! }
 //! ```
-#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
+#![warn(clippy::all)]
 
 extern crate postgres;
 #[cfg(test)]
@@ -114,7 +114,7 @@ impl<'a> PostgresAdapter<'a> {
         table_name: Option<String>,
     ) -> PostgresAdapter<'a> {
         PostgresAdapter {
-            conn: conn,
+            conn,
             migration_metadata_table: table_name.unwrap_or_else(|| "_schemer".into()),
         }
     }
@@ -140,7 +140,7 @@ impl<'a> PostgresAdapter<'a> {
 }
 
 impl<'a> Adapter for PostgresAdapter<'a> {
-    type MigrationType = PostgresMigration;
+    type MigrationType = dyn PostgresMigration;
 
     type Error = PostgresAdapterError;
 

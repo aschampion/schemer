@@ -73,7 +73,7 @@ macro_rules! test_schemer_adapter {
         $(
             #[test]
             fn $test_fn() {
-                $setup;
+                $setup
                 let adapter = $constructor;
                 $crate::testing::$test_fn(adapter);
             }
