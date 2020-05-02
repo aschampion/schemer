@@ -12,7 +12,7 @@
 //!
 //! use std::collections::HashSet;
 //!
-//! use rusqlite::{Connection, Transaction};
+//! use rusqlite::{params, Connection, Transaction};
 //! use schemer::{Migration, Migrator};
 //! use schemer_rusqlite::{RusqliteAdapter, RusqliteAdapterError, RusqliteMigration};
 //! use uuid::Uuid;
@@ -26,12 +26,12 @@
 //!
 //! impl RusqliteMigration for MyExampleMigration {
 //!     fn up(&self, transaction: &Transaction) -> Result<(), RusqliteAdapterError> {
-//!         transaction.execute("CREATE TABLE my_example (id integer PRIMARY KEY);", &[])?;
+//!         transaction.execute("CREATE TABLE my_example (id integer PRIMARY KEY);", params![])?;
 //!         Ok(())
 //!     }
 //!
 //!     fn down(&self, transaction: &Transaction) -> Result<(), RusqliteAdapterError> {
-//!         transaction.execute("DROP TABLE my_example;", &[])?;
+//!         transaction.execute("DROP TABLE my_example;", params![])?;
 //!         Ok(())
 //!     }
 //! }
@@ -51,7 +51,7 @@
 
 use std::collections::HashSet;
 
-use rusqlite::{Connection, Error as RusqliteError, Transaction};
+use rusqlite::{params, Connection, Error as RusqliteError, Transaction};
 use uuid::Uuid;
 
 use schemer::{Adapter, Migration};
@@ -122,7 +122,7 @@ impl<'a> RusqliteAdapter<'a> {
                 "#,
                 self.migration_metadata_table
             ),
-            &[],
+            params![],
         )?;
         Ok(())
     }
@@ -140,10 +140,10 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
         ))?;
         // TODO: have to do this rather than `collect` because Rusqlite has an
         // interface that goes against map conventions.
-        let rows = stmt.query_map(&[], |row| row.get::<_, WrappedUuid>(0).0)?;
+        let rows = stmt.query_map(params![], |row| row.get::<_, WrappedUuid>(0))?;
         let mut ids = HashSet::new();
         for row in rows {
-            ids.insert(row?);
+            ids.insert(row?.0);
         }
         Ok(ids)
     }
