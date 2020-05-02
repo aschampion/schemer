@@ -75,7 +75,7 @@ struct WrappedUuid(Uuid);
 
 impl rusqlite::types::FromSql for WrappedUuid {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
-        Ok(WrappedUuid(Uuid::from_bytes(value.as_blob()?).map_err(
+        Ok(WrappedUuid(Uuid::from_slice(value.as_blob()?).map_err(
             |e| rusqlite::types::FromSqlError::Other(Box::new(e)),
         )?))
     }
@@ -133,7 +133,7 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
 
     type Error = RusqliteAdapterError;
 
-    fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
+    fn applied_migrations(&mut self) -> Result<HashSet<Uuid>, Self::Error> {
         let mut stmt = self.conn.prepare(&format!(
             "SELECT id FROM {};",
             self.migration_metadata_table

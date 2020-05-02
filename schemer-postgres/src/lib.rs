@@ -12,8 +12,7 @@
 //!
 //! use std::collections::HashSet;
 //!
-//! use postgres::Connection;
-//! use postgres::transaction::Transaction;
+//! use postgres::{Client, NoTls, Transaction};
 //! use schemer::{Migration, Migrator};
 //! use schemer_postgres::{PostgresAdapter, PostgresAdapterError, PostgresMigration};
 //! use uuid::Uuid;
@@ -26,22 +25,23 @@
 //!     "An example migration without dependencies.");
 //!
 //! impl PostgresMigration for MyExampleMigration {
-//!     fn up(&self, transaction: &Transaction) -> Result<(), PostgresAdapterError> {
+//!     fn up(&self, transaction: &mut Transaction) -> Result<(), PostgresAdapterError> {
 //!         transaction.execute("CREATE TABLE my_example (id integer PRIMARY KEY);", &[])?;
 //!         Ok(())
 //!     }
 //!
-//!     fn down(&self, transaction: &Transaction) -> Result<(), PostgresAdapterError> {
+//!     fn down(&self, transaction: &mut Transaction) -> Result<(), PostgresAdapterError> {
 //!         transaction.execute("DROP TABLE my_example;", &[])?;
 //!         Ok(())
 //!     }
 //! }
 //!
 //! fn main() {
-//!     let conn = Connection::connect(
-//!         "postgresql://postgres@localhost/?search_path=pg_temp",
-//!         postgres::TlsMode::None).unwrap();
-//!     let adapter = PostgresAdapter::new(&conn, None);
+//!     let mut conn = Client::connect(
+//!         "postgresql://postgres@localhost",
+//!         NoTls).unwrap();
+//!     conn.execute("SET search_path = pg_temp", &[]).unwrap();
+//!     let adapter = PostgresAdapter::new(&mut conn, None);
 //!
 //!     let mut migrator = Migrator::new(adapter);
 //!
@@ -54,8 +54,7 @@
 
 use std::collections::HashSet;
 
-use postgres::transaction::Transaction;
-use postgres::{Connection, Error as PostgresError};
+use postgres::{Client, Error as PostgresError, Transaction};
 use uuid::Uuid;
 
 use schemer::{Adapter, Migration};
@@ -63,12 +62,12 @@ use schemer::{Adapter, Migration};
 /// PostgreSQL-specific trait for schema migrations.
 pub trait PostgresMigration: Migration {
     /// Apply a migration to the database using a transaction.
-    fn up(&self, _transaction: &Transaction<'_>) -> Result<(), PostgresError> {
+    fn up(&self, _transaction: &mut Transaction<'_>) -> Result<(), PostgresError> {
         Ok(())
     }
 
     /// Revert a migration to the database using a transaction.
-    fn down(&self, _transaction: &Transaction<'_>) -> Result<(), PostgresError> {
+    fn down(&self, _transaction: &mut Transaction<'_>) -> Result<(), PostgresError> {
         Ok(())
     }
 }
@@ -77,7 +76,7 @@ pub type PostgresAdapterError = PostgresError;
 
 /// Adapter between schemer and PostgreSQL.
 pub struct PostgresAdapter<'a> {
-    conn: &'a Connection,
+    conn: &'a mut Client,
     migration_metadata_table: String,
 }
 
@@ -93,13 +92,13 @@ impl<'a> PostgresAdapter<'a> {
     /// # extern crate schemer_postgres;
     /// #
     /// # fn main() {
-    /// let conn = postgres::Connection::connect(
-    ///     "postgresql://postgres@localhost/?search_path=pg_temp",
-    ///     postgres::TlsMode::None).unwrap();
-    /// let adapter = schemer_postgres::PostgresAdapter::new(&conn, None);
+    /// let mut conn = postgres::Client::connect(
+    ///     "postgresql://postgres@localhost",
+    ///     postgres::NoTls).unwrap();
+    /// let adapter = schemer_postgres::PostgresAdapter::new(&mut conn, None);
     /// # }
     /// ```
-    pub fn new(conn: &'a Connection, table_name: Option<String>) -> PostgresAdapter<'a> {
+    pub fn new(conn: &'a mut Client, table_name: Option<String>) -> PostgresAdapter<'a> {
         PostgresAdapter {
             conn,
             migration_metadata_table: table_name.unwrap_or_else(|| "_schemer".into()),
@@ -108,9 +107,9 @@ impl<'a> PostgresAdapter<'a> {
 
     /// Initialize the schemer metadata schema. This must be called before
     /// using `Migrator` with this adapter. This is safe to call multiple times.
-    pub fn init(&self) -> Result<(), PostgresError> {
+    pub fn init(&mut self) -> Result<(), PostgresError> {
         self.conn.execute(
-            &format!(
+            format!(
                 r#"
                     CREATE TABLE IF NOT EXISTS {} (
                         id uuid PRIMARY KEY
@@ -119,7 +118,8 @@ impl<'a> PostgresAdapter<'a> {
                     )
                 "#,
                 self.migration_metadata_table
-            ),
+            )
+            .as_str(),
             &[],
         )?;
         Ok(())
@@ -131,35 +131,37 @@ impl<'a> Adapter for PostgresAdapter<'a> {
 
     type Error = PostgresAdapterError;
 
-    fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
+    fn applied_migrations(&mut self) -> Result<HashSet<Uuid>, Self::Error> {
         let rows = self.conn.query(
-            &format!("SELECT id FROM {};", self.migration_metadata_table),
+            format!("SELECT id FROM {};", self.migration_metadata_table).as_str(),
             &[],
         )?;
         Ok(rows.iter().map(|row| row.get(0)).collect())
     }
 
     fn apply_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
-        let trans = self.conn.transaction()?;
-        migration.up(&trans)?;
+        let mut trans = self.conn.transaction()?;
+        migration.up(&mut trans)?;
         trans.execute(
-            &format!(
+            format!(
                 "INSERT INTO {} (id) VALUES ($1::uuid);",
                 self.migration_metadata_table
-            ),
+            )
+            .as_str(),
             &[&migration.id()],
         )?;
         Ok(trans.commit()?)
     }
 
     fn revert_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
-        let trans = self.conn.transaction()?;
-        migration.down(&trans)?;
+        let mut trans = self.conn.transaction()?;
+        migration.down(&mut trans)?;
         trans.execute(
-            &format!(
+            format!(
                 "DELETE FROM {} WHERE id = $1::uuid;",
                 self.migration_metadata_table
-            ),
+            )
+            .as_str(),
             &[&migration.id()],
         )?;
         Ok(trans.commit()?)
@@ -169,7 +171,7 @@ impl<'a> Adapter for PostgresAdapter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use postgres::TlsMode;
+    use postgres::NoTls;
     use schemer::test_schemer_adapter;
     use schemer::testing::*;
 
@@ -181,21 +183,19 @@ mod tests {
         }
     }
 
-    fn build_test_connection() -> Connection {
-        Connection::connect(
-            "postgresql://postgres@localhost/?search_path=pg_temp",
-            TlsMode::None,
-        )
-        .unwrap()
+    fn build_test_connection() -> Client {
+        let mut client = Client::connect("postgresql://postgres@localhost", NoTls).unwrap();
+        client.execute("SET search_path = pg_temp", &[]).unwrap();
+        client
     }
 
-    fn build_test_adapter(conn: &Connection) -> PostgresAdapter<'_> {
-        let adapter = PostgresAdapter::new(conn, None);
+    fn build_test_adapter(conn: &mut Client) -> PostgresAdapter<'_> {
+        let mut adapter = PostgresAdapter::new(conn, None);
         adapter.init().unwrap();
         adapter
     }
 
     test_schemer_adapter!(
-        let conn = build_test_connection(),
-        build_test_adapter(&conn));
+        let mut conn = build_test_connection(),
+        build_test_adapter(&mut conn));
 }

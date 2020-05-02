@@ -13,7 +13,7 @@ use std::fmt::{Debug, Display};
 
 use daggy::petgraph::EdgeDirection;
 use daggy::Dag;
-use log::{debug, info, log};
+use log::{debug, info};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -116,7 +116,7 @@ pub trait Adapter {
     type Error: std::error::Error + 'static;
 
     /// Returns the set of IDs for migrations that have been applied.
-    fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error>;
+    fn applied_migrations(&mut self) -> Result<HashSet<Uuid>, Self::Error>;
 
     /// Apply a single migration.
     fn apply_migration(&mut self, _: &Self::MigrationType) -> Result<(), Self::Error>;
@@ -387,7 +387,7 @@ pub mod tests {
 
         type Error = DefaultTestAdapterError;
 
-        fn applied_migrations(&self) -> Result<HashSet<Uuid>, Self::Error> {
+        fn applied_migrations(&mut self) -> Result<HashSet<Uuid>, Self::Error> {
             Ok(self.applied_migrations.clone())
         }
 

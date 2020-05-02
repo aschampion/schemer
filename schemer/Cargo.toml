@@ -18,7 +18,7 @@ repository = "https://github.com/aschampion/schemer"
 travis-ci = { repository = "aschampion/schemer", branch = "master" }
 
 [dependencies]
-daggy = "~0.5"
+daggy = "0.6"
 log = "0.4"
 thiserror = "1.0"
-uuid = { version = "~0.5", features = ["use_std"] }
+uuid = { version = "0.8" }
