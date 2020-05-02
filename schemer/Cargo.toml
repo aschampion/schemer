@@ -4,8 +4,8 @@ version = "0.1.2"
 edition = "2018"
 authors = [
     "Andrew Champion <andrew.champion@gmail.com>",
-    "Tom Kazimiers <tom@voodoo-arts.net",
-    "Chris Barnes <barnesc@janelia.hhmi.org",
+    "Tom Kazimiers <tom@voodoo-arts.net>",
+    "Chris Barnes <barnesc@janelia.hhmi.org>",
 ]
 description = "A database schema migration library with DAG dependencies"
 readme = "../README.md"
