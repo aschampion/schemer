@@ -190,14 +190,11 @@ impl<T: Adapter> Migrator<T> {
             let parent_idx = self
                 .id_map
                 .get(&d)
-                .ok_or_else(|| MigratorError::Dependency(DependencyError::UnknownId(d)))?;
+                .ok_or(MigratorError::Dependency(DependencyError::UnknownId(d)))?;
             self.dependencies
                 .add_edge(*parent_idx, migration_idx, ())
-                .or_else(|_| {
-                    Err(MigratorError::Dependency(DependencyError::Cycle {
-                        from: d,
-                        to: id,
-                    }))
+                .map_err(|_| {
+                    MigratorError::Dependency(DependencyError::Cycle { from: d, to: id })
                 })?;
         }
 
@@ -228,14 +225,11 @@ impl<T: Adapter> Migrator<T> {
                 let parent_idx = self
                     .id_map
                     .get(&d)
-                    .ok_or_else(|| MigratorError::Dependency(DependencyError::UnknownId(d)))?;
+                    .ok_or(MigratorError::Dependency(DependencyError::UnknownId(d)))?;
                 self.dependencies
                     .add_edge(*parent_idx, *migration_idx, ())
-                    .or_else(|_| {
-                        Err(MigratorError::Dependency(DependencyError::Cycle {
-                            from: d,
-                            to: *id,
-                        }))
+                    .map_err(|_| {
+                        MigratorError::Dependency(DependencyError::Cycle { from: d, to: *id })
                     })?;
             }
         }

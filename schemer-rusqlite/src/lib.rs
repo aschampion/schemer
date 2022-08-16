@@ -160,7 +160,7 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
             ),
             &[&uuid_bytes],
         )?;
-        Ok(trans.commit()?)
+        trans.commit()
     }
 
     fn revert_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
@@ -175,7 +175,7 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
             ),
             &[&uuid_bytes],
         )?;
-        Ok(trans.commit()?)
+        trans.commit()
     }
 }
 
