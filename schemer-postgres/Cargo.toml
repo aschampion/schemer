@@ -14,7 +14,7 @@ repository = "https://github.com/aschampion/schemer"
 travis-ci = { repository = "aschampion/schemer", branch = "master" }
 
 [dependencies]
-postgres = { version = "0.17", features = ["with-uuid-0_8"] }
-uuid = { version = "0.8" }
+postgres = { version = "0.19", features = ["with-uuid-1"] }
+uuid = { version = "1" }
 
 schemer = { version = "0.1", path = "../schemer" }
