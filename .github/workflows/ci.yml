@@ -1,0 +1,66 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
+      - uses: Swatinem/rust-cache@v1
+      - run: cargo clippy --all-features -- -D warnings
+      - run: cargo fmt -- --check
+
+  test:
+    runs-on: ${{ matrix.os }}
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_PORT: 5432
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        rust:
+          - stable
+          - 1.54
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          profile: minimal
+          override: true
+      - uses: Swatinem/rust-cache@v1
+      - run: cargo build --tests
+      - run: cargo test -- --nocapture --quiet
+
+  publish-schemer:
+    uses: aschampion/gh-actions/.github/workflows/rust-publish.yml@rust-workspace-support
+    needs: [test]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-v')
+    secrets: inherit
+
+  publish-schemer-postgres:
+    uses: aschampion/gh-actions/.github/workflows/rust-publish.yml@rust-workspace-support
+    needs: [test]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-postgres-v')
+    secrets: inherit
+
+  publish-schemer-rusqlite:
+    uses: aschampion/gh-actions/.github/workflows/rust-publish.yml@rust-workspace-support
+    needs: [test]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-rusqlite-v')
+    secrets: inherit
