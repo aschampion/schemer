@@ -35,7 +35,7 @@ jobs:
         os: [ubuntu-latest]
         rust:
           - stable
-          - 1.54
+          - 1.56
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -52,15 +52,24 @@ jobs:
     needs: [test]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-v')
     secrets: inherit
+    with:
+      working-directory: schemer
+      tag-prefix: schemer
 
   publish-schemer-postgres:
     uses: aschampion/gh-actions/.github/workflows/rust-publish.yml@rust-workspace-support
     needs: [test]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-postgres-v')
     secrets: inherit
+    with:
+      working-directory: schemer-postgres
+      tag-prefix: schemer-postgres
 
   publish-schemer-rusqlite:
     uses: aschampion/gh-actions/.github/workflows/rust-publish.yml@rust-workspace-support
     needs: [test]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-rusqlite-v')
     secrets: inherit
+    with:
+      working-directory: schemer-rusqlite
+      tag-prefix: schemer-rusqlite

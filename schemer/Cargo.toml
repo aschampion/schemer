@@ -2,6 +2,7 @@
 name = "schemer"
 version = "0.1.2"
 edition = "2018"
+rust-version = "1.56"
 authors = [
     "Andrew Champion <andrew.champion@gmail.com>",
     "Tom Kazimiers <tom@voodoo-arts.net>",
