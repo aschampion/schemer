@@ -12,7 +12,7 @@
 //!
 //! use std::collections::HashSet;
 //!
-//! use rusqlite::{params, Connection, Transaction};
+//! use rusqlite::{params, Connection, Transaction, Error as RusqliteError};
 //! use schemer::{Migration, Migrator};
 //! use schemer_rusqlite::{RusqliteAdapter, RusqliteAdapterError, RusqliteMigration};
 //! use uuid::Uuid;
@@ -25,6 +25,8 @@
 //!     "An example migration without dependencies.");
 //!
 //! impl RusqliteMigration for MyExampleMigration {
+//!     type Error = RusqliteError;
+//!
 //!     fn up(&self, transaction: &Transaction) -> Result<(), RusqliteAdapterError> {
 //!         transaction.execute("CREATE TABLE my_example (id integer PRIMARY KEY);", params![])?;
 //!         Ok(())
@@ -50,6 +52,8 @@
 #![warn(clippy::all)]
 
 use std::collections::HashSet;
+use std::error::Error;
+use std::marker::{PhantomData, Send, Sync};
 
 use rusqlite::{params, Connection, Error as RusqliteError, Transaction};
 use uuid::Uuid;
@@ -58,13 +62,15 @@ use schemer::{Adapter, Migration};
 
 /// SQlite-specific trait for schema migrations.
 pub trait RusqliteMigration: Migration {
+    type Error: From<RusqliteError>;
+
     /// Apply a migration to the database using a transaction.
-    fn up(&self, _transaction: &Transaction<'_>) -> Result<(), RusqliteError> {
+    fn up(&self, _transaction: &Transaction<'_>) -> Result<(), Self::Error> {
         Ok(())
     }
 
     /// Revert a migration to the database using a transaction.
-    fn down(&self, _transaction: &Transaction<'_>) -> Result<(), RusqliteError> {
+    fn down(&self, _transaction: &Transaction<'_>) -> Result<(), Self::Error> {
         Ok(())
     }
 }
@@ -82,12 +88,13 @@ impl rusqlite::types::FromSql for WrappedUuid {
 }
 
 /// Adapter between schemer and SQLite.
-pub struct RusqliteAdapter<'a> {
+pub struct RusqliteAdapter<'a, E> {
     conn: &'a mut Connection,
     migration_metadata_table: String,
+    _err: PhantomData<E>,
 }
 
-impl<'a> RusqliteAdapter<'a> {
+impl<'a, E> RusqliteAdapter<'a, E> {
     /// Construct a SQLite schemer adapter.
     ///
     /// `table_name` specifies the name of the table that schemer will use
@@ -96,17 +103,18 @@ impl<'a> RusqliteAdapter<'a> {
     ///
     /// ```rust
     /// # extern crate rusqlite;
-    /// # extern crate schemer_rusqlite;
+    /// # use rusqlite::{Error as RusqliteError};
     /// #
     /// # fn main() {
     /// let mut conn = rusqlite::Connection::open_in_memory().unwrap();
-    /// let adapter = schemer_rusqlite::RusqliteAdapter::new(&mut conn, None);
+    /// let adapter: schemer_rusqlite::RusqliteAdapter<RusqliteError> = schemer_rusqlite::RusqliteAdapter::new(&mut conn, None);
     /// # }
     /// ```
-    pub fn new(conn: &'a mut Connection, table_name: Option<String>) -> RusqliteAdapter<'a> {
+    pub fn new(conn: &'a mut Connection, table_name: Option<String>) -> RusqliteAdapter<'a, E> {
         RusqliteAdapter {
             conn,
             migration_metadata_table: table_name.unwrap_or_else(|| "_schemer".into()),
+            _err: PhantomData,
         }
     }
 
@@ -128,10 +136,12 @@ impl<'a> RusqliteAdapter<'a> {
     }
 }
 
-impl<'a> Adapter for RusqliteAdapter<'a> {
-    type MigrationType = dyn RusqliteMigration;
+impl<'a, E: From<RusqliteError> + Sync + Send + Error + 'static> Adapter
+    for RusqliteAdapter<'a, E>
+{
+    type MigrationType = dyn RusqliteMigration<Error = E>;
 
-    type Error = RusqliteAdapterError;
+    type Error = E;
 
     fn applied_migrations(&mut self) -> Result<HashSet<Uuid>, Self::Error> {
         let mut stmt = self.conn.prepare(&format!(
@@ -160,7 +170,7 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
             ),
             &[&uuid_bytes],
         )?;
-        trans.commit()
+        trans.commit().map_err(|e| e.into())
     }
 
     fn revert_migration(&mut self, migration: &Self::MigrationType) -> Result<(), Self::Error> {
@@ -175,19 +185,22 @@ impl<'a> Adapter for RusqliteAdapter<'a> {
             ),
             &[&uuid_bytes],
         )?;
-        trans.commit()
+        trans.commit().map_err(|e| e.into())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rusqlite::Error as RusqliteError;
     use schemer::test_schemer_adapter;
     use schemer::testing::*;
 
-    impl RusqliteMigration for TestMigration {}
+    impl RusqliteMigration for TestMigration {
+        type Error = RusqliteError;
+    }
 
-    impl<'a> TestAdapter for RusqliteAdapter<'a> {
+    impl<'a> TestAdapter for RusqliteAdapter<'a, RusqliteError> {
         fn mock(id: Uuid, dependencies: HashSet<Uuid>) -> Box<Self::MigrationType> {
             Box::new(TestMigration::new(id, dependencies))
         }
@@ -197,7 +210,7 @@ mod tests {
         Connection::open_in_memory().unwrap()
     }
 
-    fn build_test_adapter(conn: &mut Connection) -> RusqliteAdapter<'_> {
+    fn build_test_adapter(conn: &mut Connection) -> RusqliteAdapter<'_, RusqliteError> {
         let adapter = RusqliteAdapter::new(conn, None);
         adapter.init().unwrap();
         adapter
