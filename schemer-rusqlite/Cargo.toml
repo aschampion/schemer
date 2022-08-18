@@ -15,6 +15,6 @@ travis-ci = { repository = "aschampion/schemer", branch = "master" }
 
 [dependencies]
 uuid = { version = "1" }
-rusqlite = "0.23"
+rusqlite = "0.24"
 
 schemer = { version = "0.1.2", path = "../schemer" }
