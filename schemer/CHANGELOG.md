@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 <!-- next-header -->
+## [Unreleased]
+
 ## [0.2.0] - 2022-08-19
 ### Changed
 - Migrated error handling from `failure` to `thiserror`.
@@ -13,4 +15,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 <!-- next-url -->
+[Unreleased]: https://github.com/aschampion/schemer/compare/schemer-v0.2.0...HEAD"
 [0.2.0]: https://github.com/aschampion/schemer/compare/schemer=v0.1.2...schemer-v0.2.0

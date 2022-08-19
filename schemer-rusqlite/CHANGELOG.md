@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 <!-- next-header -->
+## [Unreleased]
+
 ## [0.2.0] - 2022-08-19
 ### Changed
 - `RusqliteAdapter` is now generic over an error type `E` so that migrations can return error types other than `rusqlite::Error`.
@@ -14,4 +16,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 <!-- next-url -->
+[Unreleased]: https://github.com/aschampion/schemer/compare/schemer-rusqlite-v0.2.0...HEAD
 [0.2.0]: https://github.com/aschampion/schemer/compare/schemer-rusqlite=v0.1.0...schemer-rusqlite-v0.2.0
