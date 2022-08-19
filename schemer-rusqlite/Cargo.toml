@@ -11,9 +11,6 @@ categories = ["database"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/aschampion/schemer"
 
-[badges]
-travis-ci = { repository = "aschampion/schemer", branch = "master" }
-
 [dependencies]
 uuid = { version = "1" }
 rusqlite = "0.24"
