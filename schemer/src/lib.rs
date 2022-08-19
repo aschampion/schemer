@@ -132,7 +132,7 @@ pub enum DependencyError {
     DuplicateId(Uuid),
     #[error("Unknown migration ID {0}")]
     UnknownId(Uuid),
-    #[error("Cyclic dependency cased by edge from migration IDs {from} to {to}")]
+    #[error("Cyclic dependency caused by edge from migration IDs {from} to {to}")]
     Cycle { from: Uuid, to: Uuid },
 }
 
