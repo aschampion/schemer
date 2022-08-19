@@ -15,4 +15,4 @@ repository = "https://github.com/aschampion/schemer"
 postgres = { version = "0.19", features = ["with-uuid-1"] }
 uuid = { version = "1" }
 
-schemer = { version = "0.1", path = "../schemer" }
+schemer = { version = "0.2", path = "../schemer" }
