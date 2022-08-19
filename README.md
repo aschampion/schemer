@@ -1,4 +1,4 @@
-# Schemer [![Build Status](https://github.com/aschampion/h2n5/actions/workflows/ci.yml/badge.svg)](https://github.com/aschampion/h2n5/actions/workflows/ci.yml/)
+# Schemer [![Build Status](https://github.com/aschampion/schemer/actions/workflows/ci.yml/badge.svg)](https://github.com/aschampion/schemer/actions/workflows/ci.yml/)
 
 Schemer is a database schema migration library for Rust that supports directed acyclic graph (DAG) dependencies between migrations. It currently has adapters for the following databases:
 
