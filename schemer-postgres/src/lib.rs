@@ -51,6 +51,7 @@
 //! }
 //! ```
 #![warn(clippy::all)]
+#![forbid(unsafe_code)]
 
 use std::collections::HashSet;
 

@@ -7,6 +7,7 @@
 //! - PostgreSQL: [`schemer-postgres`](https://crates.io/crates/schemer-postgres)
 //! - SQLite: [`schemer-rusqlite`](https://crates.io/crates/schemer-rusqlite)
 #![warn(clippy::all)]
+#![forbid(unsafe_code)]
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{Debug, Display};
