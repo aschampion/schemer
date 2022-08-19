@@ -11,6 +11,14 @@ Other Rust schema migration libraries to consider if you do not require DAG migr
 - [dbmigrate](https://crates.io/crates/dbmigrate)
 - [migrant](https://crates.io/crates/migrant)
 
+## Development
+
+Version bumping (including changelog release section versioning) is handled by [cargo-release](https://github.com/crate-ci/cargo-release), e.g.:
+
+```prompt
+cargo release --workspace minor
+```
+
 ## License
 
 Licensed under either of
