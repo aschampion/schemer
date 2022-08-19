@@ -76,11 +76,11 @@ macro_rules! migration {
             }
 
             fn dependencies(&self) -> ::std::collections::HashSet<::uuid::Uuid> {
-                vec![
+                ::std::collections::HashSet::from([
                     $(
                         ::uuid::Uuid::parse_str($dependency_id).unwrap(),
                     )*
-                ].into_iter().collect()
+                ])
             }
 
             fn description(&self) -> &'static str {
