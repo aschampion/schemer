@@ -1,5 +1,4 @@
 publish = false
-consolidate-commits = true
 consolidate-pushes = true
 pre-release-commit-message = "{{crate_name}} Version {{version}}"
 pre-release-replacements = [
