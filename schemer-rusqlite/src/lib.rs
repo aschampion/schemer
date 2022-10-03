@@ -169,7 +169,7 @@ impl<'a, E: From<RusqliteError> + Sync + Send + Error + 'static> Adapter
                 "INSERT INTO {} (id) VALUES (?1);",
                 self.migration_metadata_table
             ),
-            &[&uuid_bytes],
+            [&uuid_bytes],
         )?;
         trans.commit().map_err(|e| e.into())
     }
@@ -184,7 +184,7 @@ impl<'a, E: From<RusqliteError> + Sync + Send + Error + 'static> Adapter
                 "DELETE FROM {} WHERE id = ?1;",
                 self.migration_metadata_table
             ),
-            &[&uuid_bytes],
+            [&uuid_bytes],
         )?;
         trans.commit().map_err(|e| e.into())
     }
