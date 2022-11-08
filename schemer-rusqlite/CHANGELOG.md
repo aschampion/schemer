@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 <!-- next-header -->
+## [Unrelease]
+
 ## [0.2.1] - 2022-11-08
 ### Changed
 - Updated minimum rusqlite from 0.24 to 0.25.
