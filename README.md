@@ -16,7 +16,7 @@ Other Rust schema migration libraries to consider if you do not require DAG migr
 Version bumping (including changelog release section versioning) is handled by [cargo-release](https://github.com/crate-ci/cargo-release), e.g.:
 
 ```prompt
-cargo release --workspace --dev-version minor
+cargo release --workspace minor
 ```
 
 ## License
