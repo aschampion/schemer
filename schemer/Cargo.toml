@@ -16,7 +16,7 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/aschampion/schemer"
 
 [dependencies]
-daggy = "0.6"
+daggy = "0.8"
 log = "0.4"
 thiserror = "1.0"
 uuid = { version = "1" }
