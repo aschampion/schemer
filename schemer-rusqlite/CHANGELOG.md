@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 <!-- next-header -->
-## [Unrelease]
+## [Unreleased]
 
 ## [0.2.1] - 2022-11-08
 ### Changed
@@ -20,5 +20,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 <!-- next-url -->
+[Unreleased]: https://github.com/aschampion/schemer/compare/schemer-rusqlite-v0.2.1...HEAD"
 [0.2.1]: https://github.com/aschampion/schemer/compare/schemer-rusqlite-v0.2.0...schemer-rusqlite-v0.2.1
 [0.2.0]: https://github.com/aschampion/schemer/compare/schemer-rusqlite=v0.1.0...schemer-rusqlite-v0.2.0
