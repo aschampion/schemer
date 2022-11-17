@@ -15,4 +15,4 @@ repository = "https://github.com/aschampion/schemer"
 uuid = { version = "1" }
 rusqlite = "0.25"
 
-schemer = { version = "0.2.0", path = "../schemer" }
+schemer = { version = "0.2.1", path = "../schemer" }
