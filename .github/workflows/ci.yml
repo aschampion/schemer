@@ -16,6 +16,21 @@ jobs:
       - run: cargo clippy --all-features -- -D warnings
       - run: cargo fmt -- --check
 
+  semver-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Run cargo-semver-checks
+        shell: bash
+        run: |
+          export CARGO_TERM_COLOR=always
+          cargo install cargo-semver-checks --locked
+          cargo semver-checks check-release
+
   test:
     runs-on: ${{ matrix.os }}
     services:
