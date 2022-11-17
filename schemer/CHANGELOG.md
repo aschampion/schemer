@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 <!-- next-header -->
 ## [Unreleased]
+### Changed
+- Updated minimum daggy from 0.6 to 0.8.
 
 ## [0.2.0] - 2022-08-19
 ### Changed
