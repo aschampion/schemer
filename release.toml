@@ -1,5 +1,4 @@
 publish = false
-consolidate-pushes = true
 pre-release-commit-message = "{{crate_name}} Version {{version}}"
 pre-release-replacements = [
   {file="CHANGELOG.md", search="^## \\[Unreleased\\]", replace="## [{{version}}] - {{date}}", exactly=1},
