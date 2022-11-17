@@ -64,7 +64,7 @@ jobs:
 
   publish-schemer:
     uses: aschampion/gh-actions/.github/workflows/rust-publish.yml@v0
-    needs: [test]
+    needs: [test, lint]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-v')
     secrets: inherit
     with:
@@ -73,7 +73,7 @@ jobs:
 
   publish-schemer-postgres:
     uses: aschampion/gh-actions/.github/workflows/rust-publish.yml@v0
-    needs: [test]
+    needs: [test, lint]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-postgres-v')
     secrets: inherit
     with:
@@ -82,7 +82,7 @@ jobs:
 
   publish-schemer-rusqlite:
     uses: aschampion/gh-actions/.github/workflows/rust-publish.yml@v0
-    needs: [test]
+    needs: [test, lint]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/schemer-rusqlite-v')
     secrets: inherit
     with:
