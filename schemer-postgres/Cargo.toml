@@ -1,7 +1,7 @@
 [package]
 name = "schemer-postgres"
 version = "0.2.0"
-edition = "2018"
+edition = "2021"
 rust-version = "1.56"
 authors = ["Andrew Champion <andrew.champion@gmail.com>"]
 description = "PostgreSQL adapter for the Schemer database schema migration library"
