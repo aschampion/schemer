@@ -13,6 +13,6 @@ repository = "https://github.com/aschampion/schemer"
 
 [dependencies]
 uuid = { version = "1" }
-rusqlite = "0.25"
+rusqlite = "0.29.0"
 
 schemer = { version = "0.2.1", path = "../schemer" }
