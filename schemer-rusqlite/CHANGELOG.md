@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 <!-- next-header -->
 ## [Unreleased]
+
+
+## [0.2.2] - 2023-04-18
 ### Changed
 - Updated MSRV from 1.56 to 1.59.
 
@@ -22,6 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/aschampion/schemer/compare/schemer-rusqlite-v0.2.1...HEAD"
+[Unreleased]: https://github.com/aschampion/schemer/compare/schemer-rusqlite-v0.2.2...HEAD
+[0.2.2]: https://github.com/aschampion/schemer/compare/schemer-rusqlite-v0.2.1...schemer-rusqlite-v0.2.2"
 [0.2.1]: https://github.com/aschampion/schemer/compare/schemer-rusqlite-v0.2.0...schemer-rusqlite-v0.2.1
 [0.2.0]: https://github.com/aschampion/schemer/compare/schemer-rusqlite=v0.1.0...schemer-rusqlite-v0.2.0
