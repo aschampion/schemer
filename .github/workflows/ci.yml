@@ -50,7 +50,7 @@ jobs:
         os: [ubuntu-latest]
         rust:
           - stable
-          - 1.56
+          - 1.59
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1

@@ -2,7 +2,7 @@
 name = "schemer-rusqlite"
 version = "0.2.1"
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.59"
 authors = ["Andrew Champion <andrew.champion@gmail.com>"]
 description = "SQLite3 adapter for the Schemer database schema migration library "
 readme = "../README.md"
