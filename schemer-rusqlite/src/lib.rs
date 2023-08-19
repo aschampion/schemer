@@ -4,16 +4,10 @@
 //! # Examples:
 //!
 //! ```rust
-//! extern crate rusqlite;
-//! #[macro_use]
-//! extern crate schemer;
-//! extern crate schemer_rusqlite;
-//! extern crate uuid;
-//!
 //! use std::collections::HashSet;
 //!
 //! use rusqlite::{params, Connection, Transaction, Error as RusqliteError};
-//! use schemer::{Migration, Migrator};
+//! use schemer::{Migration, Migrator, migration};
 //! use schemer_rusqlite::{RusqliteAdapter, RusqliteAdapterError, RusqliteMigration};
 //! use uuid::Uuid;
 //!
@@ -38,16 +32,14 @@
 //!     }
 //! }
 //!
-//! fn main() {
-//!     let mut conn = Connection::open_in_memory().unwrap();
-//!     let adapter = RusqliteAdapter::new(&mut conn, None);
+//! let mut conn = Connection::open_in_memory().unwrap();
+//! let adapter = RusqliteAdapter::new(&mut conn, None);
 //!
-//!     let mut migrator = Migrator::new(adapter);
+//! let mut migrator = Migrator::new(adapter);
 //!
-//!     let migration = Box::new(MyExampleMigration {});
-//!     migrator.register(migration);
-//!     migrator.up(None);
-//! }
+//! let migration = Box::new(MyExampleMigration {});
+//! migrator.register(migration).unwrap();
+//! migrator.up(None).unwrap();
 //! ```
 #![warn(clippy::all)]
 #![forbid(unsafe_code)]
